@@ -74,3 +74,4 @@ echo "=================================================================="
 echo "    TOUTES LES RESSOURCES AWS ONT ÉTÉ SUPPRIMÉES AVEC SUCCÈS !    "
 echo "    Votre facture reste protégée et vos crédits préservés.        "
 echo "=================================================================="
+

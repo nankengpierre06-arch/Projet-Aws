@@ -103,3 +103,4 @@ Pour détruire l'ensemble des ressources AWS créées et garantir une facture nu
 ```
 
 Ce script termine l'instance EC2, vide et supprime les buckets S3, supprime la table DynamoDB, la file SQS, le topic SNS et le rôle IAM.
+

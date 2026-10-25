@@ -93,3 +93,4 @@ systemctl restart journal-worker.service
 
 echo "=== Déploiement terminé avec succès ! ==="
 systemctl status journal-api.service --no-pager
+

@@ -204,3 +204,4 @@ Permet à l'association de consulter l'état de l'application en temps réel (Su
   * `ERROR_QUOTA_EXCEEDED` : Avertissement de dépassement du quota de 10 000 car. (la frappe est annulée).
   * `ERROR_BLOCKED` : Notification de blocage temporaire (15 min) suite à acharnement répété.
   * `VERSION_RESTORED` : Notification d'application d'un instantané historique.
+

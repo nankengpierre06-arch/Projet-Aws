@@ -174,3 +174,4 @@ echo "Serveur WebSockets   : ws://${PUBLIC_IP}:1234/ws/<docId>"
 echo "Instance ID          : ${INSTANCE_ID}"
 echo "Bucket S3            : ${BUCKET_NAME}"
 echo "=================================================================="
+

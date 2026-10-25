@@ -38,3 +38,9 @@ __pycache__/
 *.fls
 *.fdb_latexmk
 *.synctex.gz
+
+# Local storage test files
+backend/storage_local/
+*.py
+*.txt
+

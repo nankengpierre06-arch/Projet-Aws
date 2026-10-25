@@ -85,3 +85,4 @@ RÉSULTATS DU TEST DE CHARGE :
 | **C4 (Quota 10k)** | Plafond strict de 10 000 car./jour |  Validé | Intercepteur WebSocket rejetant les frappes au-delà de 10 000 car. et rollback client. |
 | **Anti-Abus** | Blocage temporaire des personnes qui s'acharnent |  Validé | Basculement automatique en statut `BLOCKED` pour 15 min après 3 tentatives en dépassement. |
 | **C6 (Alerte e-mail)** | Notification immédiate au créateur à $N=0$ |  Validé | Déclenchement automatique de l'événement SNS lors de l'attribution de la 500ème place. |
+

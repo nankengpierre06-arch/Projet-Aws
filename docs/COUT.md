@@ -42,3 +42,4 @@ Face au jury, cette preuve de coût permet de valoriser les choix d'ingénierie 
 1. **Évitement des architectures surdimensionnées :** Claude ou d'autres propositions suggéraient des clusters Kubernetes (EKS), des équilibreurs ALB permanents ou des instances RDS coûteuses (plus de 25 $/mois). Notre choix d'une instance `t3.micro` unique optimisée avec Typst et Nginx coûte 0 €.
 2. **Choix du mode DynamoDB On-Demand :** Aucun coût de provisionnement quand l'application ne reçoit pas de requêtes.
 3. **Usage d'Amazon S3 & SQS :** Exploitation maximale des quotas mensuels gratuits de l'offre Free Tier.
+

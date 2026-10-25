@@ -347,3 +347,4 @@ const closeBtnStyle = {
   border: 'none',
   color: '#64748b'
 };
+

@@ -283,3 +283,4 @@ export default function Editor({ user, docId, onOpenShare, onOpenCreateLink, onO
     </div>
   );
 }
+

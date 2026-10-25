@@ -4,6 +4,7 @@
 const express = require('express');
 const cors = require('cors');
 
+const authRouter = require('./routes/auth');
 const downloadRouter = require('./routes/download');
 const documentsRouter = require('./routes/documents');
 const linksRouter = require('./routes/links');
@@ -32,6 +33,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Montage des routes
+app.use('/api/auth', authRouter);
 app.use('/api/download', downloadRouter);
 app.use('/api/documents', documentsRouter);
 app.use('/api/links', linksRouter);

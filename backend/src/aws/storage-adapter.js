@@ -31,7 +31,12 @@ const localStore = {
   s3Objects: new Map(), // Clé: S3 Key -> Buffer
   sqsQueue: [],
   snsSent: [],
-  blockedUsers: new Map() // email -> { reason, blockedUntil }
+  blockedUsers: new Map(), // email -> { reason, blockedUntil }
+  writers: new Map([
+    ['admin@etudiant.fr', { email: 'admin@etudiant.fr', name: 'Administrateur Association', role: 'ADMIN', createdAt: new Date().toISOString() }],
+    ['alice@etudiant.fr', { email: 'alice@etudiant.fr', name: 'Alice Martin', role: 'WRITER', createdAt: new Date().toISOString() }],
+    ['bob@etudiant.fr', { email: 'bob@etudiant.fr', name: 'Bob Dupont', role: 'WRITER', createdAt: new Date().toISOString() }]
+  ])
 };
 
 if (!fs.existsSync(config.paths.tempStorage)) {
@@ -528,11 +533,122 @@ class StorageAdapter {
       summary: {
         totalOpenDocuments: openDocsList.length,
         totalActiveLinks: activeLinks.length,
-        totalBlockedUsers: blockedList.length
+        totalBlockedUsers: blockedList.length,
+        totalWriters: localStore.writers.size
       },
       openDocuments: openDocsList,
       activeLinks,
       blockedUsers: blockedList
+    };
+  }
+
+  // ===========================================================================
+  // 7. GESTION DES COMPTES RÉDACTEURS PAR L'ADMINISTRATEUR
+  // ===========================================================================
+
+  async createWriter(email, name) {
+    const cleanEmail = email.trim().toLowerCase();
+    if (localStore.writers.has(cleanEmail)) {
+      return { success: false, reason: 'ALREADY_EXISTS', message: 'Ce compte rédacteur existe déjà.' };
+    }
+
+    const writerData = {
+      email: cleanEmail,
+      name: name.trim(),
+      role: 'WRITER',
+      createdAt: new Date().toISOString()
+    };
+
+    localStore.writers.set(cleanEmail, writerData);
+
+    if (!this.forceMock && dynamoDoc) {
+      try {
+        await dynamoDoc.send(new PutCommand({
+          TableName: this.tableName,
+          Item: {
+            PK: `USER#${cleanEmail}`,
+            SK: 'ACCOUNT',
+            ...writerData
+          }
+        }));
+      } catch {}
+    }
+
+    return { success: true, writer: writerData };
+  }
+
+  async listWriters() {
+    const today = new Date().toISOString().split('T')[0];
+    const writersList = [];
+
+    for (const [email, user] of localStore.writers.entries()) {
+      const charCount = await this.getUserCharCount(email, today);
+      const isBlocked = await this.isUserBlocked(email);
+
+      writersList.push({
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        createdAt: user.createdAt,
+        charCountToday: charCount,
+        maxQuota: config.business.dailyCharLimit,
+        remainingChars: Math.max(0, config.business.dailyCharLimit - charCount),
+        isBlocked: isBlocked.blocked,
+        blockedUntil: isBlocked.blockedUntil
+      });
+    }
+
+    return writersList;
+  }
+
+  async deleteWriter(email) {
+    const cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail === 'admin@etudiant.fr') {
+      return { success: false, message: 'Impossible de supprimer le compte administrateur principal.' };
+    }
+    const existed = localStore.writers.delete(cleanEmail);
+    return { success: existed };
+  }
+
+  async unblockUser(email) {
+    const cleanEmail = email.trim().toLowerCase();
+    localStore.blockedUsers.delete(cleanEmail);
+    return { success: true, message: `Utilisateur ${cleanEmail} débloqué.` };
+  }
+
+  async authenticateUser(email, name = '') {
+    const cleanEmail = (email || '').trim().toLowerCase();
+
+    // 1. Administrateur
+    if (cleanEmail === 'admin@etudiant.fr') {
+      return {
+        authenticated: true,
+        user: {
+          email: 'admin@etudiant.fr',
+          name: name || 'Administrateur Association',
+          role: 'ADMIN'
+        }
+      };
+    }
+
+    // 2. Rédacteur enregistré par l'admin
+    if (localStore.writers.has(cleanEmail)) {
+      const writer = localStore.writers.get(cleanEmail);
+      return {
+        authenticated: true,
+        user: {
+          email: writer.email,
+          name: writer.name || name || 'Rédacteur',
+          role: writer.role || 'WRITER'
+        }
+      };
+    }
+
+    // 3. Compte non créé par l'admin
+    return {
+      authenticated: false,
+      reason: 'NOT_FOUND',
+      message: 'Compte non reconnu. L\'administrateur de l\'association doit créer votre compte rédacteur avant toute connexion.'
     };
   }
 }
