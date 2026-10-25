@@ -157,3 +157,4 @@ ${this.escapeTypst(content || 'Document collaboratif finalisé.')}
 }
 
 module.exports = new TypstCompiler();
+

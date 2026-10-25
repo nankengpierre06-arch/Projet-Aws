@@ -43,3 +43,4 @@ process.on('SIGINT', () => {
   pdfWorker.stop();
   process.exit(0);
 });
+

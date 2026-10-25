@@ -38,3 +38,4 @@ module.exports = {
   snsClient,
   isMock: config.aws.useMock
 };
+

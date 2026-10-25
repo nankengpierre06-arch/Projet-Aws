@@ -1,9 +1,12 @@
 /**
  * Serveur de Collaboration Temps Réel (Port 1234)
  * - Maintien des WebSockets en mémoire vive (RAM < 150 Mo pour 300 rédacteurs)
- * - Protocole binaire Yjs (CRDT) & Awareness (présence et curseurs)
+ * - Protocole binaire Yjs (CRDT) & Awareness (présence et curseurs en direct)
+ * - Contrôle d'accès par document (Partage de droits)
  * - Contrôle strict du quota journalier de 10 000 caractères par rédacteur (Contrainte C4)
+ * - Détection de l'acharnement et blocage temporaire automatique
  * - Persistance immuable (Append-Only) dans DynamoDB (Contrainte C2 - Zéro perte)
+ * - Restauration dynamique de version en direct (Contrainte C3)
  */
 const { WebSocketServer, WebSocket } = require('ws');
 const Y = require('yjs');
@@ -23,13 +26,41 @@ class CollabServer {
     console.log(`[Collab Server] Écoute WebSockets démarrée sur le port ${this.port}`);
 
     this.wss.on('connection', async (conn, req) => {
-      const parsedUrl = url.parse(req.url, true);
-      const pathParts = (parsedUrl.pathname || '').split('/').filter(Boolean);
-      const docId = pathParts[pathParts.length - 1] || parsedUrl.query.docId || 'default-doc';
-      const userEmail = parsedUrl.query.email || 'redacteur@etudiant.fr';
-      const userName = parsedUrl.query.name || 'Rédacteur';
+      const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+      const pathParts = parsedUrl.pathname.split('/').filter(Boolean);
+      const docId = pathParts[pathParts.length - 1] || parsedUrl.searchParams.get('docId') || 'default-doc';
+      const userEmail = parsedUrl.searchParams.get('email') || 'redacteur@etudiant.fr';
+      const userName = parsedUrl.searchParams.get('name') || 'Rédacteur';
 
-      console.log(`[Collab] Connexion WSS établie : utilisateur=${userEmail}, doc=${docId}`);
+      // 1. Vérifier si l'utilisateur est temporairement bloqué (Anti-Abus)
+      const blockStatus = await storage.isUserBlocked(userEmail);
+      if (blockStatus.blocked) {
+        console.warn(`[Collab] Connexion rejetée pour ${userEmail} : BLOQUÉ jusqu'à ${blockStatus.blockedUntil}`);
+        this.sendJson(conn, {
+          type: 'ERROR_BLOCKED',
+          message: `Vous êtes temporairement bloqué pour acharnement jusqu'à ${blockStatus.blockedUntil}.`,
+          blockedUntil: blockStatus.blockedUntil,
+          reason: blockStatus.reason
+        });
+        conn.close(4003, 'User Blocked');
+        return;
+      }
+
+      // 2. Vérifier les droits d'accès au document (Partage)
+      const docMeta = await storage.getDocumentMetadata(docId);
+      if (docMeta && docMeta.authorizedWriters && docMeta.authorizedWriters.length > 0) {
+        if (!docMeta.authorizedWriters.includes(userEmail)) {
+          console.warn(`[Collab] Accès non autorisé : ${userEmail} sur doc ${docId}`);
+          this.sendJson(conn, {
+            type: 'ERROR_FORBIDDEN',
+            message: 'Vous n\'avez pas les droits d\'écriture sur ce document.'
+          });
+          conn.close(4003, 'Forbidden');
+          return;
+        }
+      }
+
+      console.log(`[Collab] Connexion WSS admise : utilisateur=${userEmail}, doc=${docId}`);
 
       const docState = this.getOrCreateDoc(docId);
       docState.connections.add(conn);
@@ -50,6 +81,17 @@ class CollabServer {
 
       // Gestion des messages entrants
       conn.on('message', async (data, isBinary) => {
+        // Re-vérifier si l'utilisateur a été bloqué entre temps
+        const currentBlock = await storage.isUserBlocked(userEmail);
+        if (currentBlock.blocked) {
+          this.sendJson(conn, {
+            type: 'ERROR_BLOCKED',
+            message: `Accès révoqué. Bloqué temporairement jusqu'à ${currentBlock.blockedUntil}.`
+          });
+          conn.close();
+          return;
+        }
+
         if (!isBinary) {
           try {
             const msg = JSON.parse(data.toString());
@@ -71,7 +113,7 @@ class CollabServer {
           const ytext = docState.ydoc.getText('content');
           const prevLength = ytext.length;
 
-          // Appliquer provisoirement pour mesurer le delta
+          // Mesurer le delta potentiel
           Y.applyUpdate(docState.ydoc, payload);
           const newLength = ytext.length;
           const charDelta = newLength - prevLength;
@@ -81,14 +123,26 @@ class CollabServer {
             const quotaCheck = await storage.checkAndIncrementUserChars(userEmail, today, charDelta);
 
             if (!quotaCheck.allowed) {
+              if (quotaCheck.isBlocked) {
+                this.sendJson(conn, {
+                  type: 'ERROR_BLOCKED',
+                  message: `Vous avez été bloqué pour acharnement (${quotaCheck.reason}).`,
+                  blockedUntil: quotaCheck.blockedUntil
+                });
+                conn.close();
+                return;
+              }
+
               console.warn(`[Collab C4] Quota dépassé pour ${userEmail} (${quotaCheck.current}/${config.business.dailyCharLimit} car.)`);
               this.sendJson(conn, {
                 type: 'ERROR_QUOTA_EXCEEDED',
-                message: `Quota quotidien de ${config.business.dailyCharLimit} caractères atteint ! Vos modifications ne sont pas diffusées.`,
+                message: `Quota quotidien de ${config.business.dailyCharLimit} caractères atteint !`,
                 used: quotaCheck.current,
-                limit: config.business.dailyCharLimit
+                limit: config.business.dailyCharLimit,
+                violations: quotaCheck.violations || 1
               });
-              // Renvoyer l'état canonique antérieur au client pour réaligner sa vue
+
+              // Renvoyer l'état canonique pour annuler la saisie côté client
               const rollbackUpdate = Y.encodeStateAsUpdate(docState.ydoc);
               this.sendBinary(conn, 0, rollbackUpdate);
               return;
@@ -119,7 +173,7 @@ class CollabServer {
         } 
         // Tag 1 : Message de présence et curseurs (Awareness)
         else if (messageType === 1) {
-          // Diffusion immédiate et volatile aux collaborateurs (aucune écriture en base)
+          // Diffusion volatile aux collaborateurs (aucune écriture en base)
           for (const otherConn of docState.connections) {
             if (otherConn !== conn && otherConn.readyState === WebSocket.OPEN) {
               this.sendBinary(otherConn, 1, payload);
@@ -134,7 +188,6 @@ class CollabServer {
       });
 
       conn.on('error', (err) => {
-        console.warn(`[Collab] Erreur socket : ${err.message}`);
         docState.connections.delete(conn);
       });
     });
@@ -152,6 +205,35 @@ class CollabServer {
       });
     }
     return this.docs.get(docId);
+  }
+
+  /**
+   * Restauration d'une version antérieure (EF07)
+   * Écrase le contenu actuel par l'instantané restauré et synchronise instantanément tous les clients connectés !
+   */
+  restoreDocVersion(docId, newTextContent) {
+    const docState = this.getOrCreateDoc(docId);
+    const ytext = docState.ydoc.getText('content');
+
+    docState.ydoc.transact(() => {
+      ytext.delete(0, ytext.length);
+      ytext.insert(0, newTextContent);
+    });
+
+    docState.seq += 1;
+    const update = Y.encodeStateAsUpdate(docState.ydoc);
+
+    // Diffuser la restauration en direct à tous les rédacteurs connectés
+    for (const conn of docState.connections) {
+      if (conn.readyState === WebSocket.OPEN) {
+        this.sendBinary(conn, 0, update);
+        this.sendJson(conn, {
+          type: 'VERSION_RESTORED',
+          message: 'Une version antérieure a été restaurée par un administrateur.'
+        });
+      }
+    }
+    console.log(`[Collab] Version restaurée en direct sur le doc ${docId} (${docState.connections.size} rédacteurs synchronisés)`);
   }
 
   getDocContent(docId) {
@@ -180,10 +262,12 @@ class CollabServer {
   }
 }
 
-// Export de la classe et instance par défaut
-module.exports = CollabServer;
+// Instance globale partagée
+const defaultCollabServer = new CollabServer();
+
+module.exports = defaultCollabServer;
+module.exports.CollabServer = CollabServer;
 
 if (require.main === module) {
-  const server = new CollabServer();
-  server.start();
+  defaultCollabServer.start();
 }

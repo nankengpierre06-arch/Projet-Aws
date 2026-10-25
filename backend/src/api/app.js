@@ -7,6 +7,7 @@ const cors = require('cors');
 const downloadRouter = require('./routes/download');
 const documentsRouter = require('./routes/documents');
 const linksRouter = require('./routes/links');
+const adminRouter = require('./routes/admin');
 
 const app = express();
 
@@ -34,5 +35,6 @@ app.get('/api/health', (req, res) => {
 app.use('/api/download', downloadRouter);
 app.use('/api/documents', documentsRouter);
 app.use('/api/links', linksRouter);
+app.use('/api/admin', adminRouter);
 
 module.exports = app;

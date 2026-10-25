@@ -92,3 +92,4 @@ if (require.main === module) {
   const worker = new PdfWorker();
   worker.start();
 }
+

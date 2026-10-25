@@ -33,3 +33,4 @@ module.exports = {
     tempStorage: path.resolve(__dirname, '../../storage_local')
   }
 };
+

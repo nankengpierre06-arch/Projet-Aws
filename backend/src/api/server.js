@@ -9,3 +9,4 @@ const server = app.listen(config.portApi, () => {
 });
 
 module.exports = server;
+
