@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Share2, Download, History, RotateCcw, Check, Copy, Calendar, Clock } from 'lucide-react';
 
-export function ShareModal({ docId, onClose }) {
+export function ShareModal({ docId, userEmail, onClose, onCollaboratorAdded }) {
   const [email, setEmail] = useState('');
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
@@ -14,11 +14,16 @@ export function ShareModal({ docId, onClose }) {
       const res = await fetch(`/api/documents/${docId}/shares`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email: email.trim().toLowerCase(), inviterEmail: userEmail })
       });
       const data = await res.json();
-      setMsg(`Droits d'écriture accordés à ${email} !`);
-      setEmail('');
+      if (!res.ok) {
+        setMsg(data.message || 'Erreur lors de l\'invitation.');
+      } else {
+        setMsg(`✓ Droits d'écriture accordés à ${email} ! Une notification lui a été transmise.`);
+        setEmail('');
+        if (onCollaboratorAdded) onCollaboratorAdded(email);
+      }
     } catch {
       setMsg('Erreur lors du partage.');
     } finally {

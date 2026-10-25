@@ -72,6 +72,56 @@ const localStore = {
     ['admin@etudiant.fr', { email: 'admin@etudiant.fr', name: 'Administrateur Association', role: 'ADMIN', createdAt: new Date().toISOString() }],
     ['alice@etudiant.fr', { email: 'alice@etudiant.fr', name: 'Alice Martin', role: 'WRITER', createdAt: new Date().toISOString() }],
     ['bob@etudiant.fr', { email: 'bob@etudiant.fr', name: 'Bob Dupont', role: 'WRITER', createdAt: new Date().toISOString() }]
+  ]),
+  notifications: new Map([
+    ['alice@etudiant.fr', [
+      {
+        id: 'notif-1',
+        type: 'INVITE',
+        title: 'Invitation à collaborer',
+        message: 'L\'Administrateur vous a invité à collaborer sur "Revue Annuelle".',
+        docId: 'revue-principale',
+        createdAt: new Date(Date.now() - 7200000).toISOString(),
+        read: false
+      },
+      {
+        id: 'notif-2',
+        type: 'INVITE',
+        title: 'Invitation à collaborer',
+        message: 'Bob Dupont vous a invité à collaborer sur "Chronique Culturelle & Festivals".',
+        docId: 'doc-bob-culture',
+        createdAt: new Date(Date.now() - 5400000).toISOString(),
+        read: false
+      },
+      {
+        id: 'notif-3',
+        type: 'QUOTA',
+        title: 'Crédit d\'écriture quotidien',
+        message: 'Votre crédit quotidien de 10 000 caractères est actif (Contrainte C4).',
+        createdAt: new Date(Date.now() - 3600000).toISOString(),
+        read: true
+      },
+      {
+        id: 'notif-4',
+        type: 'PUBLICATION',
+        title: 'Tirage Ouvert',
+        message: 'Le tirage de la Revue n°42 est désormais ouvert aux téléchargements.',
+        docId: 'doc-revue-42',
+        createdAt: new Date(Date.now() - 1800000).toISOString(),
+        read: true
+      }
+    ]],
+    ['admin@etudiant.fr', [
+      {
+        id: 'notif-admin-1',
+        type: 'SYSTEM',
+        title: 'Système Opérationnel',
+        message: 'Plateforme en ligne, base NoSQL et worker PDF actifs.',
+        createdAt: new Date().toISOString(),
+        read: false
+      }
+    ]],
+    ['bob@etudiant.fr', []]
   ])
 };
 
@@ -87,12 +137,12 @@ const localStore = {
 
   const pastThreeDays = new Date(now - 3 * 86400000).toISOString();
 
-  // Document principal de la rédaction
+  // Document principal de la rédaction (Partagé)
   localStore.items.set('DOC#revue-principale#META', {
     PK: 'DOC#revue-principale',
     SK: 'META',
     docId: 'revue-principale',
-    title: 'Revue Annuelle',
+    title: 'Revue Annuelle (Édition Collective)',
     ownerEmail: 'admin@etudiant.fr',
     authorizedWriters: ['admin@etudiant.fr', 'alice@etudiant.fr', 'bob@etudiant.fr'],
     currentVersion: 1,
@@ -100,7 +150,33 @@ const localStore = {
     updatedAt: new Date().toISOString()
   });
 
-  // 1. Revue 42 (En cours - Date/Heure passée - Tirage Ouvert)
+  // Document créé par Alice (Alice propriétaire)
+  localStore.items.set('DOC#doc-alice-campus#META', {
+    PK: 'DOC#doc-alice-campus',
+    SK: 'META',
+    docId: 'doc-alice-campus',
+    title: 'Enquête Campus : Logement & Mobilité Étudiante',
+    ownerEmail: 'alice@etudiant.fr',
+    authorizedWriters: ['alice@etudiant.fr'],
+    currentVersion: 1,
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    updatedAt: new Date(Date.now() - 86400000).toISOString()
+  });
+
+  // Document créé par Bob (Partagé avec Alice)
+  localStore.items.set('DOC#doc-bob-culture#META', {
+    PK: 'DOC#doc-bob-culture',
+    SK: 'META',
+    docId: 'doc-bob-culture',
+    title: 'Chronique Culturelle & Festivals Universitaires',
+    ownerEmail: 'bob@etudiant.fr',
+    authorizedWriters: ['bob@etudiant.fr', 'alice@etudiant.fr'],
+    currentVersion: 1,
+    createdAt: new Date(Date.now() - 172800000).toISOString(),
+    updatedAt: new Date(Date.now() - 172800000).toISOString()
+  });
+
+  // 1. Revue 42 (En cours - Date/Heure passée - Tirage Ouvert - Créée par Alice)
   localStore.items.set('DOC#doc-revue-42#META', {
     PK: 'DOC#doc-revue-42',
     SK: 'META',
@@ -253,13 +329,20 @@ class StorageAdapter {
     }
   }
 
-  async addCollaborator(docId, email) {
+  async addCollaborator(docId, email, inviterEmail = 'Un collaborateur') {
     const doc = await this.getDocumentMetadata(docId);
     if (!doc) return null;
 
     if (!doc.authorizedWriters) doc.authorizedWriters = [];
     if (!doc.authorizedWriters.includes(email)) {
       doc.authorizedWriters.push(email);
+      // Créer une notification pour l'utilisateur invité
+      await this.addNotification(email, {
+        type: 'INVITE',
+        title: 'Invitation à collaborer',
+        message: `${inviterEmail} vous a invité à collaborer sur "${doc.title}".`,
+        docId
+      });
     }
     doc.updatedAt = new Date().toISOString();
 
@@ -278,6 +361,67 @@ class StorageAdapter {
       localStore.items.set(`DOC#${docId}#META`, doc);
       return doc;
     }
+  }
+
+  async getUserDocuments(email) {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const ownedDocs = [];
+    const sharedDocs = [];
+
+    for (const [key, val] of localStore.items.entries()) {
+      if (key.startsWith('DOC#') && key.endsWith('#META')) {
+        const docOwner = (val.ownerEmail || '').toLowerCase();
+        const authorized = (val.authorizedWriters || []).map(e => e.toLowerCase());
+
+        const docSummary = {
+          docId: val.docId,
+          title: val.title || `Document ${val.docId}`,
+          ownerEmail: val.ownerEmail,
+          authorizedWriters: val.authorizedWriters || [],
+          currentVersion: val.currentVersion || 1,
+          createdAt: val.createdAt,
+          updatedAt: val.updatedAt
+        };
+
+        if (docOwner === cleanEmail) {
+          ownedDocs.push(docSummary);
+        } else if (authorized.includes(cleanEmail)) {
+          sharedDocs.push(docSummary);
+        }
+      }
+    }
+
+    return {
+      ownedDocs: ownedDocs.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)),
+      sharedDocs: sharedDocs.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+    };
+  }
+
+  async getUserNotifications(email) {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    return localStore.notifications.get(cleanEmail) || [];
+  }
+
+  async addNotification(email, notif) {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!localStore.notifications.has(cleanEmail)) {
+      localStore.notifications.set(cleanEmail, []);
+    }
+    const item = {
+      id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      createdAt: new Date().toISOString(),
+      read: false,
+      ...notif
+    };
+    localStore.notifications.get(cleanEmail).unshift(item);
+    return item;
+  }
+
+  async markNotificationsRead(email) {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const list = localStore.notifications.get(cleanEmail) || [];
+    list.forEach(n => { n.read = true; });
+    return { success: true, count: list.length };
   }
 
   // ===========================================================================

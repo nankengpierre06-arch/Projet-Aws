@@ -3,6 +3,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import HomePage from './components/HomePage';
 import Editor from './components/Editor';
+import WriterSidebar from './components/WriterSidebar';
 import DownloadView from './components/DownloadView';
 import AdminDashboard from './components/AdminDashboard';
 import AuthModal from './components/AuthModal';
@@ -25,6 +26,7 @@ export default function App() {
   // 3. Document et Liens
   const [docId, setDocId] = useState('revue-principale');
   const [downloadLinkId, setDownloadLinkId] = useState('revue-edition-42');
+  const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
 
   // 4. Modales
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -132,16 +134,28 @@ export default function App() {
           </div>
         )}
 
-        {/* 3. Espace Rédacteur (PROTÉGÉ : Rôle WRITER ou ADMIN) */}
+        {/* 3. Espace Rédacteur (PROTÉGÉ : Rôle WRITER ou ADMIN) avec Sidebar */}
         {currentView === 'editor' && user && (
-          <div style={{ flex: 1, height: 'calc(100vh - 64px)' }}>
-            <Editor
+          <div style={{ flex: 1, display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+            <WriterSidebar
               user={user}
-              docId={docId}
-              onOpenShare={() => setShowShareModal(true)}
-              onOpenCreateLink={() => setShowCreateLinkModal(true)}
-              onOpenVersions={() => setShowVersionsModal(true)}
+              activeDocId={docId}
+              onSelectDoc={(newDocId) => setDocId(newDocId)}
+              onOpenCreateLink={(targetDocId) => {
+                if (targetDocId) setDocId(targetDocId);
+                setShowCreateLinkModal(true);
+              }}
+              refreshTrigger={sidebarRefreshKey}
             />
+            <div style={{ flex: 1, height: '100%', overflow: 'hidden' }}>
+              <Editor
+                user={user}
+                docId={docId}
+                onOpenShare={() => setShowShareModal(true)}
+                onOpenCreateLink={() => setShowCreateLinkModal(true)}
+                onOpenVersions={() => setShowVersionsModal(true)}
+              />
+            </div>
           </div>
         )}
 
@@ -169,7 +183,12 @@ export default function App() {
 
       {/* MODALES MÉTIER DE L'ÉDITEUR */}
       {showShareModal && (
-        <ShareModal docId={docId} onClose={() => setShowShareModal(false)} />
+        <ShareModal
+          docId={docId}
+          userEmail={user?.email}
+          onClose={() => setShowShareModal(false)}
+          onCollaboratorAdded={() => setSidebarRefreshKey(k => k + 1)}
+        />
       )}
 
       {showCreateLinkModal && (
@@ -177,7 +196,10 @@ export default function App() {
           docId={docId}
           userEmail={user?.email}
           onClose={() => setShowCreateLinkModal(false)}
-          onLinkCreated={(link) => setDownloadLinkId(link.linkId)}
+          onLinkCreated={(link) => {
+            setDownloadLinkId(link.linkId);
+            setSidebarRefreshKey(k => k + 1);
+          }}
         />
       )}
 

@@ -5,7 +5,7 @@ import { QuillBinding } from 'y-quill';
 import { WebsocketProvider } from 'y-websocket';
 import { 
   Users, Share2, Download, History, ShieldAlert, CheckCircle, 
-  Clock, RotateCcw, AlertTriangle, FileText 
+  Clock, RotateCcw, AlertTriangle, FileText, UserPlus
 } from 'lucide-react';
 
 const COLORS = ['#663399', '#2563eb', '#16a34a', '#d97706', '#dc2626', '#db2777', '#0891b2'];
@@ -216,22 +216,26 @@ export default function Editor({ user, docId, onOpenShare, onOpenCreateLink, onO
           </span>
         </div>
 
-        {/* Actions : Partager, Lien public, Versions */}
-        <div style={{ display: 'flex', gap: '8px' }}>
+        {/* Actions : Inviter des collaborateurs, Versions, Lien public */}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button
             onClick={onOpenShare}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '6px 12px',
-              backgroundColor: '#f1f5f9',
-              border: '1px solid #cbd5e1',
-              color: '#334155',
-              fontSize: '13px'
+              padding: '7px 14px',
+              backgroundColor: '#6b21a8',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(107, 33, 168, 0.25)'
             }}
           >
-            <Share2 size={15} /> Partager
+            <UserPlus size={16} /> Inviter des Collaborateurs
           </button>
 
           <button

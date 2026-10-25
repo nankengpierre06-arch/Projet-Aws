@@ -8,7 +8,27 @@ const crypto = require('crypto');
 const storage = require('../../aws/storage-adapter');
 const collabServer = require('../../collab/server');
 
-// 1. Création d'un nouveau document collaboratif (EF01)
+// 1. Liste des documents d'un utilisateur (Documents créés + Documents partagés)
+router.get('/user/:email', async (req, res) => {
+  const { email } = req.params;
+  const docs = await storage.getUserDocuments(email);
+  return res.json(docs);
+});
+
+// Notifications de l'utilisateur
+router.get('/notifications/:email', async (req, res) => {
+  const { email } = req.params;
+  const notifs = await storage.getUserNotifications(email);
+  return res.json(notifs);
+});
+
+router.post('/notifications/:email/read', async (req, res) => {
+  const { email } = req.params;
+  const result = await storage.markNotificationsRead(email);
+  return res.json(result);
+});
+
+// 2. Création d'un nouveau document collaboratif (EF01)
 router.post('/', async (req, res) => {
   const { title = 'Nouvelle Revue', ownerEmail = 'redacteur-chef@etudiant.fr' } = req.body;
   const docId = `doc-${crypto.randomBytes(4).toString('hex')}`;
@@ -21,7 +41,7 @@ router.post('/', async (req, res) => {
   });
 });
 
-// 2. Récupération des métadonnées d'un document
+// 3. Récupération des métadonnées d'un document
 router.get('/:docId', async (req, res) => {
   const { docId } = req.params;
   const doc = await storage.getDocumentMetadata(docId);
@@ -31,16 +51,16 @@ router.get('/:docId', async (req, res) => {
   return res.json(doc);
 });
 
-// 3. Partage des droits d'écriture à d'autres rédacteurs (EF02 - Sujet §1)
+// 4. Partage des droits d'écriture à d'autres rédacteurs (EF02 - Sujet §1)
 router.post('/:docId/shares', async (req, res) => {
   const { docId } = req.params;
-  const { email } = req.body;
+  const { email, inviterEmail } = req.body;
 
   if (!email) {
     return res.status(400).json({ error: 'MISSING_EMAIL', message: 'L\'adresse email est obligatoire pour le partage' });
   }
 
-  const updatedDoc = await storage.addCollaborator(docId, email);
+  const updatedDoc = await storage.addCollaborator(docId, email, inviterEmail);
   if (!updatedDoc) {
     return res.status(404).json({ error: 'DOCUMENT_NOT_FOUND' });
   }
