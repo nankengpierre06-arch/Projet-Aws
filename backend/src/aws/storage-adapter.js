@@ -79,8 +79,11 @@ const localStore = {
         id: 'notif-1',
         type: 'INVITE',
         title: 'Invitation à collaborer',
-        message: 'L\'Administrateur vous a invité à collaborer sur "Revue Annuelle".',
+        message: 'L\'Administrateur vous a invité à collaborer sur "Revue Annuelle (Édition Collective)".',
         docId: 'revue-principale',
+        inviterEmail: 'admin@etudiant.fr',
+        docTitle: 'Revue Annuelle (Édition Collective)',
+        status: 'PENDING',
         createdAt: new Date(Date.now() - 7200000).toISOString(),
         read: false
       },
@@ -90,6 +93,9 @@ const localStore = {
         title: 'Invitation à collaborer',
         message: 'Bob Dupont vous a invité à collaborer sur "Chronique Culturelle & Festivals".',
         docId: 'doc-bob-culture',
+        inviterEmail: 'bob@etudiant.fr',
+        docTitle: 'Chronique Culturelle & Festivals Universitaires',
+        status: 'PENDING',
         createdAt: new Date(Date.now() - 5400000).toISOString(),
         read: false
       },
@@ -97,7 +103,7 @@ const localStore = {
         id: 'notif-3',
         type: 'QUOTA',
         title: 'Crédit d\'écriture quotidien',
-        message: 'Votre crédit quotidien de 10 000 caractères est actif (Contrainte C4).',
+        message: 'Votre crédit de 10 000 caractères par jour est actif.',
         createdAt: new Date(Date.now() - 3600000).toISOString(),
         read: true
       },
@@ -137,14 +143,15 @@ const localStore = {
 
   const pastThreeDays = new Date(now - 3 * 86400000).toISOString();
 
-  // Document principal de la rédaction (Partagé)
+  // Document principal de la rédaction (Invitation en attente pour Alice)
   localStore.items.set('DOC#revue-principale#META', {
     PK: 'DOC#revue-principale',
     SK: 'META',
     docId: 'revue-principale',
     title: 'Revue Annuelle (Édition Collective)',
     ownerEmail: 'admin@etudiant.fr',
-    authorizedWriters: ['admin@etudiant.fr', 'alice@etudiant.fr', 'bob@etudiant.fr'],
+    authorizedWriters: ['admin@etudiant.fr'],
+    pendingInvites: ['alice@etudiant.fr'],
     currentVersion: 1,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
@@ -158,22 +165,38 @@ const localStore = {
     title: 'Enquête Campus : Logement & Mobilité Étudiante',
     ownerEmail: 'alice@etudiant.fr',
     authorizedWriters: ['alice@etudiant.fr'],
+    pendingInvites: [],
     currentVersion: 1,
     createdAt: new Date(Date.now() - 86400000).toISOString(),
     updatedAt: new Date(Date.now() - 86400000).toISOString()
   });
 
-  // Document créé par Bob (Partagé avec Alice)
+  // Document créé par Bob (Invitation en attente pour Alice)
   localStore.items.set('DOC#doc-bob-culture#META', {
     PK: 'DOC#doc-bob-culture',
     SK: 'META',
     docId: 'doc-bob-culture',
     title: 'Chronique Culturelle & Festivals Universitaires',
     ownerEmail: 'bob@etudiant.fr',
-    authorizedWriters: ['bob@etudiant.fr', 'alice@etudiant.fr'],
+    authorizedWriters: ['bob@etudiant.fr'],
+    pendingInvites: ['alice@etudiant.fr'],
     currentVersion: 1,
     createdAt: new Date(Date.now() - 172800000).toISOString(),
     updatedAt: new Date(Date.now() - 172800000).toISOString()
+  });
+
+  // Document partagé déjà actif pour Alice
+  localStore.items.set('DOC#doc-guide-etudiant#META', {
+    PK: 'DOC#doc-guide-etudiant',
+    SK: 'META',
+    docId: 'doc-guide-etudiant',
+    title: 'Guide d\'Accueil & Intégration des Nouveaux Étudiants',
+    ownerEmail: 'admin@etudiant.fr',
+    authorizedWriters: ['admin@etudiant.fr', 'alice@etudiant.fr'],
+    pendingInvites: [],
+    currentVersion: 1,
+    createdAt: new Date(Date.now() - 250000000).toISOString(),
+    updatedAt: new Date(Date.now() - 250000000).toISOString()
   });
 
   // 1. Revue 42 (En cours - Date/Heure passée - Tirage Ouvert - Créée par Alice)
@@ -292,6 +315,7 @@ class StorageAdapter {
       title,
       ownerEmail,
       authorizedWriters: [ownerEmail], // Liste des personnes autorisées à écrire
+      pendingInvites: [], // Collaborateurs invités en attente d'approbation
       currentVersion: 1,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -334,14 +358,31 @@ class StorageAdapter {
     if (!doc) return null;
 
     if (!doc.authorizedWriters) doc.authorizedWriters = [];
-    if (!doc.authorizedWriters.includes(email)) {
-      doc.authorizedWriters.push(email);
-      // Créer une notification pour l'utilisateur invité
-      await this.addNotification(email, {
+    if (!doc.pendingInvites) doc.pendingInvites = [];
+
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) return doc;
+
+    const authorizedLower = doc.authorizedWriters.map(e => e.toLowerCase());
+    const pendingLower = doc.pendingInvites.map(e => e.toLowerCase());
+
+    // Si déjà collaborateur actif, rien à faire
+    if (authorizedLower.includes(cleanEmail)) {
+      return doc;
+    }
+
+    // Ajouter à pendingInvites si pas déjà présent
+    if (!pendingLower.includes(cleanEmail)) {
+      doc.pendingInvites.push(cleanEmail);
+      // Créer une notification pour l'utilisateur invité avec statut PENDING
+      await this.addNotification(cleanEmail, {
         type: 'INVITE',
         title: 'Invitation à collaborer',
         message: `${inviterEmail} vous a invité à collaborer sur "${doc.title}".`,
-        docId
+        docId,
+        inviterEmail,
+        docTitle: doc.title,
+        status: 'PENDING'
       });
     }
     doc.updatedAt = new Date().toISOString();
@@ -363,21 +404,126 @@ class StorageAdapter {
     }
   }
 
+  async approveCollaboration(docId, userEmail) {
+    const doc = await this.getDocumentMetadata(docId);
+    if (!doc) return { success: false, error: 'Document introuvable' };
+
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    if (!cleanEmail) return { success: false, error: 'Email invalide' };
+
+    if (!doc.authorizedWriters) doc.authorizedWriters = [];
+    if (!doc.pendingInvites) doc.pendingInvites = [];
+
+    // Retirer de pendingInvites
+    doc.pendingInvites = doc.pendingInvites.filter(e => e.toLowerCase() !== cleanEmail);
+
+    // Ajouter à authorizedWriters
+    if (!doc.authorizedWriters.map(e => e.toLowerCase()).includes(cleanEmail)) {
+      doc.authorizedWriters.push(cleanEmail);
+    }
+    doc.updatedAt = new Date().toISOString();
+
+    localStore.items.set(`DOC#${docId}#META`, doc);
+
+    // Mettre à jour les notifications de l'utilisateur
+    const notifs = localStore.notifications.get(cleanEmail) || [];
+    for (const notif of notifs) {
+      if (notif.docId === docId && notif.type === 'INVITE') {
+        notif.status = 'ACCEPTED';
+        notif.read = true;
+      }
+    }
+
+    // Notifier le propriétaire du document
+    if (doc.ownerEmail && doc.ownerEmail.toLowerCase() !== cleanEmail) {
+      await this.addNotification(doc.ownerEmail, {
+        type: 'SYSTEM',
+        title: 'Collaboration acceptée',
+        message: `${cleanEmail} a accepté votre invitation à collaborer sur "${doc.title}".`,
+        docId,
+        docTitle: doc.title
+      });
+    }
+
+    if (!this.forceMock && dynamoDoc) {
+      try {
+        await dynamoDoc.send(new PutCommand({
+          TableName: this.tableName,
+          Item: doc
+        }));
+      } catch {}
+    }
+
+    return { success: true, doc };
+  }
+
+  async rejectCollaboration(docId, userEmail) {
+    const doc = await this.getDocumentMetadata(docId);
+    if (!doc) return { success: false, error: 'Document introuvable' };
+
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    if (!cleanEmail) return { success: false, error: 'Email invalide' };
+
+    if (!doc.authorizedWriters) doc.authorizedWriters = [];
+    if (!doc.pendingInvites) doc.pendingInvites = [];
+
+    // Retirer de pendingInvites et de authorizedWriters
+    doc.pendingInvites = doc.pendingInvites.filter(e => e.toLowerCase() !== cleanEmail);
+    doc.authorizedWriters = doc.authorizedWriters.filter(e => e.toLowerCase() !== cleanEmail);
+    doc.updatedAt = new Date().toISOString();
+
+    localStore.items.set(`DOC#${docId}#META`, doc);
+
+    // Mettre à jour les notifications de l'utilisateur
+    const notifs = localStore.notifications.get(cleanEmail) || [];
+    for (const notif of notifs) {
+      if (notif.docId === docId && notif.type === 'INVITE') {
+        notif.status = 'REJECTED';
+        notif.read = true;
+      }
+    }
+
+    // Notifier le propriétaire du document
+    if (doc.ownerEmail && doc.ownerEmail.toLowerCase() !== cleanEmail) {
+      await this.addNotification(doc.ownerEmail, {
+        type: 'SYSTEM',
+        title: 'Collaboration refusée',
+        message: `${cleanEmail} a décliné l'invitation à collaborer sur "${doc.title}".`,
+        docId,
+        docTitle: doc.title
+      });
+    }
+
+    if (!this.forceMock && dynamoDoc) {
+      try {
+        await dynamoDoc.send(new PutCommand({
+          TableName: this.tableName,
+          Item: doc
+        }));
+      } catch {}
+    }
+
+    return { success: true, doc };
+  }
+
   async getUserDocuments(email) {
     const cleanEmail = (email || '').trim().toLowerCase();
     const ownedDocs = [];
     const sharedDocs = [];
+    const pendingDocs = [];
 
     for (const [key, val] of localStore.items.entries()) {
       if (key.startsWith('DOC#') && key.endsWith('#META')) {
         const docOwner = (val.ownerEmail || '').toLowerCase();
         const authorized = (val.authorizedWriters || []).map(e => e.toLowerCase());
+        const pending = (val.pendingInvites || []).map(e => e.toLowerCase());
 
         const docSummary = {
           docId: val.docId,
           title: val.title || `Document ${val.docId}`,
           ownerEmail: val.ownerEmail,
           authorizedWriters: val.authorizedWriters || [],
+          pendingInvites: val.pendingInvites || [],
           currentVersion: val.currentVersion || 1,
           archived: Boolean(val.archived),
           createdAt: val.createdAt,
@@ -388,13 +534,16 @@ class StorageAdapter {
           ownedDocs.push(docSummary);
         } else if (authorized.includes(cleanEmail)) {
           sharedDocs.push(docSummary);
+        } else if (pending.includes(cleanEmail)) {
+          pendingDocs.push(docSummary);
         }
       }
     }
 
     return {
       ownedDocs: ownedDocs.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)),
-      sharedDocs: sharedDocs.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
+      sharedDocs: sharedDocs.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)),
+      pendingDocs: pendingDocs.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt))
     };
   }
 

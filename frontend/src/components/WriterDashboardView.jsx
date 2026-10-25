@@ -3,7 +3,7 @@ import {
   FileText, Plus, Archive, Trash2, Edit3, Clock, Users, 
   CheckCircle, AlertCircle, Folder, Share2, History, Download, 
   Search, ArrowRight, RotateCcw, Bell, Check, Sparkles, Link2, 
-  Copy, Calendar, ShieldCheck, Lock, ExternalLink
+  Copy, Calendar, ShieldCheck, Lock, ExternalLink, X
 } from 'lucide-react';
 
 export default function WriterDashboardView({
@@ -11,6 +11,7 @@ export default function WriterDashboardView({
   user,
   ownedDocs = [],
   sharedDocs = [],
+  pendingDocs = [],
   notifications = [],
   links = [],
   onOpenDoc,
@@ -19,7 +20,9 @@ export default function WriterDashboardView({
   onDeleteDoc,
   onOpenCreateLink,
   onOpenVersions,
-  onMarkNotifsRead
+  onMarkNotifsRead,
+  onApproveCollab,
+  onRejectCollab
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterArchive, setFilterArchive] = useState('ALL'); // 'ALL' | 'ACTIVE' | 'ARCHIVED'
@@ -119,6 +122,12 @@ export default function WriterDashboardView({
 
   // Filtrage des documents partagés
   const filteredSharedDocs = sharedDocs.filter(doc => {
+    return (doc.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+           (doc.ownerEmail || '').toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  // Filtrage des invitations en attente
+  const filteredPendingDocs = pendingDocs.filter(doc => {
     return (doc.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
            (doc.ownerEmail || '').toLowerCase().includes(searchTerm.toLowerCase());
   });
@@ -561,119 +570,271 @@ export default function WriterDashboardView({
               Documents Partagés avec Moi
             </h1>
             <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>
-              Articles et revues créés par d'autres membres où vos droits de co-rédaction sont actifs.
+              Articles et revues créés par d'autres membres où vos droits de co-rédaction sont actifs ou en attente d'approbation.
             </p>
           </div>
 
-          {filteredSharedDocs.length === 0 ? (
-            <div style={{
-              backgroundColor: '#ffffff',
-              borderRadius: '12px',
-              border: '1px dashed #cbd5e1',
-              padding: '60px 20px',
-              textAlign: 'center'
-            }}>
-              <Users size={44} color="#94a3b8" style={{ margin: '0 auto 12px auto' }} />
-              <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#334155' }}>Aucun document partagé</h3>
-              <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
-                Vous n'avez pas encore été invité à collaborer sur des revues tierces.
-              </p>
-            </div>
-          ) : (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))',
-              gap: '20px'
-            }}>
-              {filteredSharedDocs.map(doc => (
-                <div
-                  key={doc.docId}
-                  style={{
-                    backgroundColor: '#ffffff',
-                    borderRadius: '12px',
-                    border: '1px solid #e2e8f0',
-                    padding: '22px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)'
-                  }}
-                >
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <span style={{
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        color: '#2563eb',
-                        backgroundColor: '#eff6ff',
-                        padding: '2px 8px',
-                        borderRadius: '6px'
-                      }}>
-                        Partagé par {doc.ownerEmail?.split('@')[0]}
-                      </span>
+          {/* 1. SECTION : INVITATIONS EN ATTENTE D'APPROBATION */}
+          {filteredPendingDocs.length > 0 && (
+            <div style={{ marginBottom: '36px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+                <h2 style={{ fontSize: '17px', fontWeight: '800', color: '#0f172a' }}>
+                  Invitations en attente de votre réponse
+                </h2>
+                <span style={{
+                  fontSize: '11.5px',
+                  fontWeight: '700',
+                  backgroundColor: '#fef3c7',
+                  color: '#b45309',
+                  border: '1px solid #fde68a',
+                  padding: '2px 8px',
+                  borderRadius: '10px'
+                }}>
+                  {filteredPendingDocs.length} en attente
+                </span>
+              </div>
 
-                      <span style={{
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        color: '#6b21a8',
-                        backgroundColor: '#f3e8ff',
-                        padding: '2px 7px',
-                        borderRadius: '4px'
-                      }}>
-                        v{doc.currentVersion || 1}
-                      </span>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))',
+                gap: '20px'
+              }}>
+                {filteredPendingDocs.map(doc => (
+                  <div
+                    key={doc.docId}
+                    style={{
+                      backgroundColor: '#ffffff',
+                      borderRadius: '12px',
+                      border: '2px solid #ddd6fe',
+                      padding: '22px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      boxShadow: '0 4px 14px rgba(124, 58, 237, 0.08)'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          color: '#7c3aed',
+                          backgroundColor: '#f5f3ff',
+                          border: '1px solid #ddd6fe',
+                          padding: '3px 8px',
+                          borderRadius: '6px'
+                        }}>
+                          Invité par {doc.ownerEmail}
+                        </span>
+
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          color: '#b45309',
+                          backgroundColor: '#fef3c7',
+                          padding: '2px 7px',
+                          borderRadius: '4px'
+                        }}>
+                          À confirmer
+                        </span>
+                      </div>
+
+                      <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '8px', lineHeight: '1.4' }}>
+                        {doc.title}
+                      </h3>
+
+                      <p style={{ fontSize: '12.5px', color: '#64748b', marginBottom: '16px', lineHeight: '1.4' }}>
+                        Vous avez reçu une invitation de collaboration. Souhaitez-vous rejoindre la rédaction de cette revue ?
+                      </p>
                     </div>
 
-                    <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
-                      {doc.title}
-                    </h3>
+                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '16px', display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => onApproveCollab && onApproveCollab(doc.docId)}
+                        style={{
+                          flex: 1,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          padding: '8px 12px',
+                          backgroundColor: '#16a34a',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '12.5px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)',
+                          transition: 'background-color 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#15803d'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#16a34a'}
+                      >
+                        <Check size={14} /> Approuver
+                      </button>
 
-                    <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
-                      Propriétaire légal : <b>{doc.ownerEmail}</b>
-                    </p>
+                      <button
+                        onClick={() => onRejectCollab && onRejectCollab(doc.docId)}
+                        style={{
+                          flex: 1,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          padding: '8px 12px',
+                          backgroundColor: '#fff1f2',
+                          border: '1px solid #fecdd3',
+                          color: '#e11d48',
+                          borderRadius: '8px',
+                          fontSize: '12.5px',
+                          fontWeight: '600',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.15s ease'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffe4e6'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff1f2'}
+                      >
+                        <X size={14} /> Rejeter
+                      </button>
+                    </div>
                   </div>
-
-                  <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '16px', display: 'flex', gap: '8px' }}>
-                    <button
-                      onClick={() => onOpenDoc(doc.docId)}
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        padding: '8px 14px',
-                        backgroundColor: '#2563eb',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '13px',
-                        fontWeight: '600',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Edit3 size={15} /> Co-rédiger (Éditeur)
-                    </button>
-
-                    <button
-                      onClick={() => onOpenVersions(doc.docId)}
-                      title="Consulter l'historique des versions"
-                      style={{
-                        padding: '8px 12px',
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '8px',
-                        color: '#475569',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <History size={15} />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
+
+          {/* 2. SECTION : COLLABORATIONS ACTIVES */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '17px', fontWeight: '800', color: '#0f172a' }}>
+                Collaborations Actives
+              </h2>
+              <span style={{
+                fontSize: '11.5px',
+                fontWeight: '700',
+                backgroundColor: '#eff6ff',
+                color: '#2563eb',
+                border: '1px solid #bfdbfe',
+                padding: '2px 8px',
+                borderRadius: '10px'
+              }}>
+                {filteredSharedDocs.length}
+              </span>
+            </div>
+
+            {filteredSharedDocs.length === 0 ? (
+              <div style={{
+                backgroundColor: '#ffffff',
+                borderRadius: '12px',
+                border: '1px dashed #cbd5e1',
+                padding: '50px 20px',
+                textAlign: 'center'
+              }}>
+                <Users size={40} color="#94a3b8" style={{ margin: '0 auto 12px auto' }} />
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#334155' }}>Aucune collaboration active</h3>
+                <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+                  {filteredPendingDocs.length > 0 
+                    ? "Approuvez une invitation ci-dessus pour accéder immédiatement à l'éditeur partagé." 
+                    : "Vous n'avez pas encore de document partagé actif."}
+                </p>
+              </div>
+            ) : (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))',
+                gap: '20px'
+              }}>
+                {filteredSharedDocs.map(doc => (
+                  <div
+                    key={doc.docId}
+                    style={{
+                      backgroundColor: '#ffffff',
+                      borderRadius: '12px',
+                      border: '1px solid #e2e8f0',
+                      padding: '22px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          color: '#2563eb',
+                          backgroundColor: '#eff6ff',
+                          padding: '2px 8px',
+                          borderRadius: '6px'
+                        }}>
+                          Partagé par {doc.ownerEmail?.split('@')[0]}
+                        </span>
+
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          color: '#6b21a8',
+                          backgroundColor: '#f3e8ff',
+                          padding: '2px 7px',
+                          borderRadius: '4px'
+                        }}>
+                          v{doc.currentVersion || 1}
+                        </span>
+                      </div>
+
+                      <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
+                        {doc.title}
+                      </h3>
+
+                      <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
+                        Propriétaire légal : <b>{doc.ownerEmail}</b>
+                      </p>
+                    </div>
+
+                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '16px', display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={() => onOpenDoc(doc.docId)}
+                        style={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          padding: '8px 14px',
+                          backgroundColor: '#2563eb',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Edit3 size={15} /> Co-rédiger (Éditeur)
+                      </button>
+
+                      <button
+                        onClick={() => onOpenVersions(doc.docId)}
+                        title="Consulter l'historique des versions"
+                        style={{
+                          padding: '8px 12px',
+                          backgroundColor: '#ffffff',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          color: '#475569',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <History size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -1161,88 +1322,196 @@ export default function WriterDashboardView({
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {notifications.map(n => (
-                <div
-                  key={n.id}
-                  style={{
-                    backgroundColor: n.read ? '#ffffff' : '#faf5ff',
-                    border: '1px solid',
-                    borderColor: n.read ? '#e2e8f0' : '#d8b4fe',
-                    borderRadius: '10px',
-                    padding: '16px 20px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: '16px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', minWidth: 0 }}>
-                    <div style={{
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '8px',
-                      backgroundColor: n.read ? '#f1f5f9' : '#f3e8ff',
-                      color: n.read ? '#64748b' : '#7c3aed',
+              {notifications.map(n => {
+                const isInvite = n.type === 'INVITE';
+                const isPending = n.status === 'PENDING';
+                const isAccepted = n.status === 'ACCEPTED';
+                const isRejected = n.status === 'REJECTED';
+
+                return (
+                  <div
+                    key={n.id}
+                    style={{
+                      backgroundColor: n.read ? '#ffffff' : '#faf5ff',
+                      border: '1px solid',
+                      borderColor: isPending ? '#c084fc' : (n.read ? '#e2e8f0' : '#d8b4fe'),
+                      borderRadius: '12px',
+                      padding: '18px 22px',
                       display: 'flex',
+                      justifyContent: 'space-between',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0
-                    }}>
-                      <Bell size={18} />
+                      gap: '16px',
+                      boxShadow: isPending ? '0 4px 12px rgba(124, 58, 237, 0.08)' : '0 1px 3px rgba(0,0,0,0.03)',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', minWidth: 0 }}>
+                      <div style={{
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '10px',
+                        backgroundColor: isPending ? '#ede9fe' : (n.read ? '#f1f5f9' : '#f3e8ff'),
+                        color: isPending ? '#7c3aed' : (n.read ? '#64748b' : '#7c3aed'),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        {isInvite ? <Users size={18} /> : <Bell size={18} />}
+                      </div>
+
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '14px', fontWeight: '700', color: n.read ? '#334155' : '#581c87' }}>
+                            {n.title}
+                          </span>
+
+                          {isPending && (
+                            <span style={{
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              backgroundColor: '#fef3c7',
+                              color: '#b45309',
+                              border: '1px solid #fde68a',
+                              padding: '2px 8px',
+                              borderRadius: '6px'
+                            }}>
+                              En attente d'approbation
+                            </span>
+                          )}
+
+                          {isAccepted && (
+                            <span style={{
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              backgroundColor: '#dcfce7',
+                              color: '#15803d',
+                              border: '1px solid #bbf7d0',
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              <Check size={12} /> Acceptée
+                            </span>
+                          )}
+
+                          {isRejected && (
+                            <span style={{
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              backgroundColor: '#fee2e2',
+                              color: '#b91c1c',
+                              border: '1px solid #fecaca',
+                              padding: '2px 8px',
+                              borderRadius: '6px'
+                            }}>
+                              ✕ Refusée
+                            </span>
+                          )}
+
+                          {!n.read && !isPending && (
+                            <span style={{
+                              fontSize: '10px',
+                              fontWeight: '700',
+                              backgroundColor: '#7c3aed',
+                              color: '#fff',
+                              padding: '1px 6px',
+                              borderRadius: '10px'
+                            }}>
+                              NOUVEAU
+                            </span>
+                          )}
+                        </div>
+
+                        <p style={{ fontSize: '13px', color: '#475569', margin: '0 0 6px 0', lineHeight: '1.4' }}>
+                          {n.message}
+                        </p>
+
+                        <span style={{ fontSize: '11px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Clock size={11} />
+                          {new Date(n.createdAt).toLocaleString('fr-FR')}
+                        </span>
+                      </div>
                     </div>
 
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                        <span style={{ fontSize: '14px', fontWeight: '700', color: n.read ? '#334155' : '#581c87' }}>
-                          {n.title}
-                        </span>
-                        {!n.read && (
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: '700',
-                            backgroundColor: '#7c3aed',
-                            color: '#fff',
-                            padding: '1px 6px',
-                            borderRadius: '10px'
-                          }}>
-                            NOUVEAU
-                          </span>
-                        )}
-                      </div>
-                      <p style={{ fontSize: '13px', color: '#475569', margin: '0 0 6px 0', lineHeight: '1.4' }}>
-                        {n.message}
-                      </p>
-                      <span style={{ fontSize: '11px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Clock size={11} />
-                        {new Date(n.createdAt).toLocaleString('fr-FR')}
-                      </span>
+                    {/* Actions de la notification */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      {isInvite && isPending ? (
+                        <>
+                          <button
+                            onClick={() => onApproveCollab && onApproveCollab(n.docId)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '8px 14px',
+                              backgroundColor: '#16a34a',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '8px',
+                              fontSize: '12.5px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)',
+                              transition: 'background-color 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#15803d'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#16a34a'}
+                          >
+                            <Check size={14} /> Approuver
+                          </button>
+
+                          <button
+                            onClick={() => onRejectCollab && onRejectCollab(n.docId)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '8px 14px',
+                              backgroundColor: '#fff1f2',
+                              border: '1px solid #fecdd3',
+                              color: '#e11d48',
+                              borderRadius: '8px',
+                              fontSize: '12.5px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              transition: 'background-color 0.15s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffe4e6'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff1f2'}
+                          >
+                            <X size={14} /> Rejeter
+                          </button>
+                        </>
+                      ) : (
+                        n.docId && !isRejected && (
+                          <button
+                            onClick={() => onOpenDoc(n.docId)}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '8px 14px',
+                              backgroundColor: '#7c3aed',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '8px',
+                              fontSize: '12.5px',
+                              fontWeight: '600',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 6px rgba(124, 58, 237, 0.2)'
+                            }}
+                          >
+                            <Edit3 size={13} /> Ouvrir
+                          </button>
+                        )
+                      )}
                     </div>
                   </div>
-
-                  {n.docId && (
-                    <button
-                      onClick={() => onOpenDoc(n.docId)}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '8px 14px',
-                        backgroundColor: '#7c3aed',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        flexShrink: 0
-                      }}
-                    >
-                      <Edit3 size={13} /> Ouvrir
-                    </button>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

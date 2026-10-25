@@ -20,7 +20,7 @@ export function ShareModal({ docId, userEmail, onClose, onCollaboratorAdded }) {
       if (!res.ok) {
         setMsg(data.message || 'Erreur lors de l\'invitation.');
       } else {
-        setMsg(`✓ Droits d'écriture accordés à ${email} ! Une notification lui a été transmise.`);
+        setMsg(`✓ Invitation transmise à ${email} ! Il pourra approuver ou rejeter la collaboration.`);
         setEmail('');
         if (onCollaboratorAdded) onCollaboratorAdded(email);
       }
@@ -43,7 +43,7 @@ export function ShareModal({ docId, userEmail, onClose, onCollaboratorAdded }) {
         </div>
         <form onSubmit={handleShare} style={{ padding: '20px' }}>
           <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>
-            Indiquez l'adresse e-mail déclarative du collaborateur pour lui accorder les droits d'écriture sur ce document.
+            Indiquez l'adresse e-mail déclarative du rédacteur à inviter. Une demande d'approbation lui sera adressée dans son espace personnel.
           </p>
           <input
             type="email"
@@ -59,7 +59,7 @@ export function ShareModal({ docId, userEmail, onClose, onCollaboratorAdded }) {
             disabled={loading}
             style={{ width: '100%', padding: '10px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none' }}
           >
-            {loading ? 'Attribution...' : 'Accorder l\'accès'}
+            {loading ? 'Envoi...' : 'Envoyer l\'invitation'}
           </button>
         </form>
       </div>

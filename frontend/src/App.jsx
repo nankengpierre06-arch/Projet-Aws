@@ -31,6 +31,17 @@ const DEFAULT_OWNED_DOCS = [
 
 const DEFAULT_SHARED_DOCS = [
   {
+    docId: 'doc-guide-etudiant',
+    title: 'Guide d\'Accueil & Intégration des Nouveaux Étudiants',
+    ownerEmail: 'admin@etudiant.fr',
+    currentVersion: 1,
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    updatedAt: new Date(Date.now() - 86400000).toISOString()
+  }
+];
+
+const DEFAULT_PENDING_DOCS = [
+  {
     docId: 'revue-principale',
     title: 'Revue Annuelle (Édition Collective)',
     ownerEmail: 'admin@etudiant.fr',
@@ -51,22 +62,31 @@ const DEFAULT_SHARED_DOCS = [
 const DEFAULT_NOTIFS = [
   {
     id: 'notif-1',
-    title: 'Nouvelle Collaboration',
-    message: 'L\'Administrateur vous a invité sur "Revue Annuelle".',
+    type: 'INVITE',
+    title: 'Invitation à collaborer',
+    message: 'L\'Administrateur vous a invité à collaborer sur "Revue Annuelle (Édition Collective)".',
     docId: 'revue-principale',
+    inviterEmail: 'admin@etudiant.fr',
+    docTitle: 'Revue Annuelle (Édition Collective)',
+    status: 'PENDING',
     createdAt: new Date(Date.now() - 3600000).toISOString(),
     read: false
   },
   {
     id: 'notif-2',
-    title: 'Nouvelle Collaboration',
-    message: 'Bob Dupont vous a invité sur "Chronique Culturelle".',
+    type: 'INVITE',
+    title: 'Invitation à collaborer',
+    message: 'Bob Dupont vous a invité à collaborer sur "Chronique Culturelle & Festivals".',
     docId: 'doc-bob-culture',
+    inviterEmail: 'bob@etudiant.fr',
+    docTitle: 'Chronique Culturelle & Festivals Universitaires',
+    status: 'PENDING',
     createdAt: new Date(Date.now() - 7200000).toISOString(),
     read: false
   },
   {
     id: 'notif-3',
+    type: 'QUOTA',
     title: 'Crédit Quotidien',
     message: 'Crédit de 10 000 caractères prêt pour la rédaction.',
     createdAt: new Date(Date.now() - 10800000).toISOString(),
@@ -95,6 +115,7 @@ export default function App() {
   const [docId, setDocId] = useState('doc-revue-42');
   const [ownedDocs, setOwnedDocs] = useState(DEFAULT_OWNED_DOCS);
   const [sharedDocs, setSharedDocs] = useState(DEFAULT_SHARED_DOCS);
+  const [pendingDocs, setPendingDocs] = useState(DEFAULT_PENDING_DOCS);
   const [notifications, setNotifications] = useState(DEFAULT_NOTIFS);
   const [publications, setPublications] = useState([]);
   const [downloadLinkId, setDownloadLinkId] = useState('revue-edition-42');
@@ -114,8 +135,9 @@ export default function App() {
     fetch(`/api/documents/user/${encodeURIComponent(user.email)}`)
       .then(res => res.json())
       .then(data => {
-        if (data.ownedDocs && data.ownedDocs.length > 0) setOwnedDocs(data.ownedDocs);
-        if (data.sharedDocs && data.sharedDocs.length > 0) setSharedDocs(data.sharedDocs);
+        if (data.ownedDocs) setOwnedDocs(data.ownedDocs);
+        if (data.sharedDocs) setSharedDocs(data.sharedDocs);
+        if (data.pendingDocs) setPendingDocs(data.pendingDocs);
       })
       .catch(() => {});
 
@@ -291,6 +313,53 @@ export default function App() {
     } catch {}
   };
 
+  const handleApproveCollab = async (targetDocId) => {
+    // Mise à jour optimiste immédiate
+    const targetPending = pendingDocs.find(d => d.docId === targetDocId);
+    if (targetPending) {
+      setPendingDocs(prev => prev.filter(d => d.docId !== targetDocId));
+      setSharedDocs(prev => [targetPending, ...prev]);
+    }
+    setNotifications(prev => prev.map(n => 
+      n.docId === targetDocId && n.type === 'INVITE'
+        ? { ...n, status: 'ACCEPTED', read: true }
+        : n
+    ));
+
+    try {
+      const res = await fetch(`/api/documents/${encodeURIComponent(targetDocId)}/collaborations/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userEmail: user.email })
+      });
+      if (res.ok) {
+        loadUserDocuments();
+      }
+    } catch {}
+  };
+
+  const handleRejectCollab = async (targetDocId) => {
+    // Mise à jour optimiste immédiate
+    setPendingDocs(prev => prev.filter(d => d.docId !== targetDocId));
+    setSharedDocs(prev => prev.filter(d => d.docId !== targetDocId));
+    setNotifications(prev => prev.map(n => 
+      n.docId === targetDocId && n.type === 'INVITE'
+        ? { ...n, status: 'REJECTED', read: true }
+        : n
+    ));
+
+    try {
+      const res = await fetch(`/api/documents/${encodeURIComponent(targetDocId)}/collaborations/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userEmail: user.email })
+      });
+      if (res.ok) {
+        loadUserDocuments();
+      }
+    } catch {}
+  };
+
   return (
     <div style={{
       height: currentView === 'editor' ? '100vh' : 'auto',
@@ -357,7 +426,7 @@ export default function App() {
               activeDocId={docId}
               activeDocTitle={ownedDocs.find(d => d.docId === docId)?.title || sharedDocs.find(d => d.docId === docId)?.title || docId}
               ownedDocsCount={ownedDocs.length}
-              sharedDocsCount={sharedDocs.length}
+              sharedDocsCount={sharedDocs.length + pendingDocs.length}
               unreadNotifsCount={notifications.filter(n => !n.read).length}
               linksCount={publications.length}
               onSelectTab={(tab) => setWriterTab(tab)}
@@ -387,6 +456,7 @@ export default function App() {
                 user={user}
                 ownedDocs={ownedDocs}
                 sharedDocs={sharedDocs}
+                pendingDocs={pendingDocs}
                 notifications={notifications}
                 links={publications}
                 onOpenDoc={handleOpenDoc}
@@ -402,6 +472,8 @@ export default function App() {
                   setShowVersionsModal(true);
                 }}
                 onMarkNotifsRead={handleMarkNotifsRead}
+                onApproveCollab={handleApproveCollab}
+                onRejectCollab={handleRejectCollab}
               />
             )}
           </div>

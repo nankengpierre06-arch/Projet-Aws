@@ -66,8 +66,9 @@ router.post('/:docId/shares', async (req, res) => {
   }
 
   return res.status(200).json({
-    message: `Droits d'écriture accordés à ${email}`,
+    message: `Invitation envoyée avec succès à ${email}`,
     docId,
+    pendingInvites: updatedDoc.pendingInvites,
     authorizedWriters: updatedDoc.authorizedWriters
   });
 });
@@ -175,6 +176,60 @@ router.delete('/:docId', async (req, res) => {
 
   await storage.deleteDocument(docId);
   return res.json({ message: 'Document supprimé définitivement.', docId });
+});
+
+// 9. Approuver une invitation à collaborer
+router.post('/:docId/collaborations/approve', async (req, res) => {
+  const { docId } = req.params;
+  const { userEmail } = req.body;
+
+  if (!userEmail) {
+    return res.status(400).json({
+      error: 'MISSING_USER_EMAIL',
+      message: 'L\'email du rédacteur est obligatoire pour approuver la collaboration.'
+    });
+  }
+
+  const result = await storage.approveCollaboration(docId, userEmail);
+  if (!result || !result.success) {
+    return res.status(400).json({
+      error: 'APPROVE_FAILED',
+      message: result?.error || 'Impossible d\'approuver cette collaboration.'
+    });
+  }
+
+  return res.status(200).json({
+    message: 'Collaboration approuvée avec succès !',
+    docId,
+    document: result.doc
+  });
+});
+
+// 10. Rejeter une invitation à collaborer
+router.post('/:docId/collaborations/reject', async (req, res) => {
+  const { docId } = req.params;
+  const { userEmail } = req.body;
+
+  if (!userEmail) {
+    return res.status(400).json({
+      error: 'MISSING_USER_EMAIL',
+      message: 'L\'email du rédacteur est obligatoire pour rejeter la collaboration.'
+    });
+  }
+
+  const result = await storage.rejectCollaboration(docId, userEmail);
+  if (!result || !result.success) {
+    return res.status(400).json({
+      error: 'REJECT_FAILED',
+      message: result?.error || 'Impossible de rejeter cette collaboration.'
+    });
+  }
+
+  return res.status(200).json({
+    message: 'Invitation à collaborer rejetée.',
+    docId,
+    document: result.doc
+  });
 });
 
 module.exports = router;
