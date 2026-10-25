@@ -1,0 +1,13 @@
+{
+  "name": "revue-collaborative-etudiante",
+  "version": "1.0.0",
+  "description": "Plateforme d'édition collaborative et de publication de la revue étudiante",
+  "scripts": {
+    "dev": "node start-dev.js",
+    "start": "node start-dev.js",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "test": "bash tests/run_all_tests.sh"
+  }
+}
