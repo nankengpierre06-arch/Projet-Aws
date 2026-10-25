@@ -1,0 +1,16 @@
+{
+  "name": "journal-cdk-infra",
+  "version": "1.0.0",
+  "description": "AWS CDK Stack pour le Journal Collaboratif Étudiant",
+  "bin": {
+    "infra": "bin/infra.js"
+  },
+  "scripts": {
+    "synth": "cdk synth",
+    "deploy": "cdk deploy"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.130.0",
+    "constructs": "^10.3.0"
+  }
+}

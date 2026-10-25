@@ -10,12 +10,17 @@ const documentsRouter = require('./routes/documents');
 const linksRouter = require('./routes/links');
 const adminRouter = require('./routes/admin');
 
+const path = require('path');
 const storage = require('../aws/storage-adapter');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Servir les fichiers statiques du frontend construit (dist)
+const distPath = path.resolve(__dirname, '../../../frontend/dist');
+app.use(express.static(distPath));
 
 // Point de contrôle de santé (Healthcheck)
 app.get('/health', (req, res) => {
@@ -46,5 +51,13 @@ app.use('/api/download', downloadRouter);
 app.use('/api/documents', documentsRouter);
 app.use('/api/links', linksRouter);
 app.use('/api/admin', adminRouter);
+
+// Fallback pour le routage frontend (SPA)
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'NOT_FOUND', message: 'Route API introuvable' });
+  }
+  res.sendFile(path.join(distPath, 'index.html'));
+});
 
 module.exports = app;

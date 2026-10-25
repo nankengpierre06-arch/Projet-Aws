@@ -1,0 +1,17 @@
+{
+  "app": "node bin/infra.js",
+  "watch": {
+    "include": [
+      "**"
+    ],
+    "exclude": [
+      "README.md",
+      "cdk*.json",
+      "package*.json",
+      "node_modules"
+    ]
+  },
+  "context": {
+    "@aws-cdk/core:stackRelativeExports": true
+  }
+}
