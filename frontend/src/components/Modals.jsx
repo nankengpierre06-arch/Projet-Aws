@@ -1,0 +1,349 @@
+import React, { useState, useEffect } from 'react';
+import { X, Share2, Download, History, RotateCcw, Check, Copy } from 'lucide-react';
+
+export function ShareModal({ docId, onClose }) {
+  const [email, setEmail] = useState('');
+  const [msg, setMsg] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleShare = async (e) => {
+    e.preventDefault();
+    if (!email) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/documents/${docId}/shares`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      setMsg(`Droits d'écriture accordés à ${email} !`);
+      setEmail('');
+    } catch {
+      setMsg('Erreur lors du partage.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" style={backdropStyle}>
+      <div style={modalBoxStyle}>
+        <div style={headerStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Share2 size={18} color="var(--primary)" />
+            <h3 style={{ fontSize: '15px', fontWeight: 'bold' }}>Inviter un Rédacteur</h3>
+          </div>
+          <button onClick={onClose} style={closeBtnStyle}><X size={18} /></button>
+        </div>
+        <form onSubmit={handleShare} style={{ padding: '20px' }}>
+          <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>
+            Indiquez l'adresse e-mail déclarative du collaborateur pour lui accorder les droits d'écriture sur ce document.
+          </p>
+          <input
+            type="email"
+            placeholder="etudiant@univ.fr"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ width: '100%', marginBottom: '12px' }}
+            required
+          />
+          {msg && <p style={{ fontSize: '12px', color: 'var(--success)', marginBottom: '10px' }}>{msg}</p>}
+          <button
+            type="submit"
+            disabled={loading}
+            style={{ width: '100%', padding: '10px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none' }}
+          >
+            {loading ? 'Attribution...' : 'Accorder l\'accès'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export function CreateLinkModal({ docId, userEmail, onClose, onLinkCreated }) {
+  const [maxPlaces, setMaxPlaces] = useState(500);
+  const [createdLink, setCreatedLink] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await fetch('/api/links', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          docId,
+          maxPlaces: parseInt(maxPlaces, 10),
+          creatorEmail: userEmail
+        })
+      });
+      const data = await res.json();
+      setCreatedLink(data);
+      if (onLinkCreated) onLinkCreated(data);
+    } catch {
+      alert('Erreur création de lien');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyUrl = () => {
+    const fullUrl = `${window.location.origin}/#/download/${createdLink.linkId}`;
+    navigator.clipboard.writeText(fullUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 3000);
+  };
+
+  return (
+    <div className="modal-backdrop" style={backdropStyle}>
+      <div style={modalBoxStyle}>
+        <div style={headerStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Download size={18} color="var(--primary)" />
+            <h3 style={{ fontSize: '15px', fontWeight: 'bold' }}>Créer un Lien de Téléchargement Public</h3>
+          </div>
+          <button onClick={onClose} style={closeBtnStyle}><X size={18} /></button>
+        </div>
+        <div style={{ padding: '20px' }}>
+          {!createdLink ? (
+            <form onSubmit={handleCreate}>
+              <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px' }}>
+                Ce lien public permettra aux visiteurs de télécharger la version du document en PDF. Le téléchargement sera clôturé dès le quota atteint.
+              </p>
+              <label style={{ fontSize: '12px', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
+                Quota maximum de téléchargements autorisés (Contrainte C1) :
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="5000"
+                value={maxPlaces}
+                onChange={(e) => setMaxPlaces(e.target.value)}
+                style={{ width: '100%', marginBottom: '16px' }}
+                required
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                style={{ width: '100%', padding: '10px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none' }}
+              >
+                {loading ? 'Génération...' : `Générer le lien public (${maxPlaces} places)`}
+              </button>
+            </form>
+          ) : (
+            <div>
+              <div style={{ padding: '12px', backgroundColor: 'var(--success-bg)', color: 'var(--success)', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', marginBottom: '12px' }}>
+                Lien généré avec succès ! Quota : {createdLink.maxPlaces} exemplaires.
+              </div>
+              <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>
+                Vous serez averti par e-mail dès l'attribution du 500ème exemplaire (Contrainte C6).
+              </p>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                <input
+                  type="text"
+                  readOnly
+                  value={`${window.location.origin}/#/download/${createdLink.linkId}`}
+                  style={{ flex: 1, fontSize: '12px', backgroundColor: '#f8fafc' }}
+                />
+                <button
+                  onClick={copyUrl}
+                  style={{ padding: '8px 12px', backgroundColor: '#e2e8f0', border: 'none', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
+                >
+                  {copied ? <Check size={14} color="green" /> : <Copy size={14} />} {copied ? 'Copié' : 'Copier'}
+                </button>
+              </div>
+              <button
+                onClick={onClose}
+                style={{ width: '100%', padding: '10px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1' }}
+              >
+                Fermer
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function VersionsModal({ docId, userEmail, onClose }) {
+  const [versions, setVersions] = useState([]);
+  const [label, setLabel] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState('');
+
+  const fetchVersions = async () => {
+    try {
+      const res = await fetch(`/api/documents/${docId}/versions`);
+      const data = await res.json();
+      setVersions(data.versions || []);
+    } catch {}
+  };
+
+  useEffect(() => {
+    fetchVersions();
+  }, [docId]);
+
+  const handleSnapshot = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await fetch(`/api/documents/${docId}/versions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label, authorEmail: userEmail })
+      });
+      setLabel('');
+      setStatus('Instantané figé créé avec succès !');
+      fetchVersions();
+      setTimeout(() => setStatus(''), 4000);
+    } catch {
+      setStatus('Erreur création snapshot');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRestore = async (versionSeq) => {
+    if (!window.confirm(`Confirmer la restauration de la version #${versionSeq} ? Le texte actuel sera remplacé.`)) return;
+    try {
+      await fetch(`/api/documents/${docId}/restore/${versionSeq}`, { method: 'POST' });
+      setStatus(`Version #${versionSeq} restaurée en direct !`);
+      setTimeout(() => {
+        setStatus('');
+        onClose();
+      }, 1500);
+    } catch {
+      alert('Erreur lors de la restauration');
+    }
+  };
+
+  return (
+    <div className="modal-backdrop" style={backdropStyle}>
+      <div style={{ ...modalBoxStyle, maxWidth: '580px' }}>
+        <div style={headerStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <History size={18} color="var(--primary)" />
+            <h3 style={{ fontSize: '15px', fontWeight: 'bold' }}>Versions & Instantanés T1 (Contrainte C3)</h3>
+          </div>
+          <button onClick={onClose} style={closeBtnStyle}><X size={18} /></button>
+        </div>
+        <div style={{ padding: '20px' }}>
+          {/* Créer un nouvel instantané */}
+          <form onSubmit={handleSnapshot} style={{ marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
+            <label style={{ fontSize: '12px', fontWeight: '600', display: 'block', marginBottom: '6px' }}>
+              Créer un nouvel instantané figé (T1) :
+            </label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="text"
+                placeholder="Ex: Version finale avant parution"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                style={{ flex: 1, fontSize: '12px' }}
+                required
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                style={{ padding: '8px 14px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none', fontSize: '12px', whiteSpace: 'nowrap' }}
+              >
+                Figer la version
+              </button>
+            </div>
+            {status && <p style={{ fontSize: '12px', color: 'var(--success)', marginTop: '8px' }}>{status}</p>}
+          </form>
+
+          {/* Liste des versions */}
+          <h4 style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px' }}>Historique des versions enregistrées :</h4>
+          {versions.length === 0 ? (
+            <p style={{ fontSize: '12px', color: '#64748b' }}>Aucune version figée enregistrée pour ce document.</p>
+          ) : (
+            <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {versions.map((v) => (
+                <div
+                  key={v.versionSeq}
+                  style={{
+                    padding: '10px 12px',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <div>
+                    <span style={{ fontWeight: 'bold', fontSize: '13px', color: '#0f172a' }}>
+                      Version #{v.versionSeq} : {v.label}
+                    </span>
+                    <p style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                      Créée le {new Date(v.createdAt).toLocaleDateString('fr-FR')} par {v.authorEmail}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleRestore(v.versionSeq)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '6px 10px',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid var(--border)',
+                      fontSize: '11px',
+                      color: 'var(--primary)'
+                    }}
+                  >
+                    <RotateCcw size={12} /> Restaurer (EF07)
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const backdropStyle = {
+  position: 'fixed',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: 'rgba(15, 23, 42, 0.5)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 1000,
+  padding: '16px'
+};
+
+const modalBoxStyle = {
+  maxWidth: '460px',
+  width: '100%',
+  backgroundColor: '#ffffff',
+  borderRadius: '10px',
+  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+  overflow: 'hidden'
+};
+
+const headerStyle = {
+  padding: '14px 18px',
+  borderBottom: '1px solid var(--border)',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  backgroundColor: '#f8fafc'
+};
+
+const closeBtnStyle = {
+  background: 'transparent',
+  border: 'none',
+  color: '#64748b'
+};
