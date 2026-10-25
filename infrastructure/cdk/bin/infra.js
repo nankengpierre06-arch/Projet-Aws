@@ -10,3 +10,4 @@ new JournalStack(app, 'JournalCollaboratifStack', {
   },
   description: 'Infrastructure AWS du Journal Étudiant Collaboratif (DynamoDB, S3, SQS, SNS, IAM)'
 });
+

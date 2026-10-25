@@ -22,3 +22,4 @@ npx cdk synth
 # 3. Déployer l'infrastructure sur votre compte AWS
 npx cdk deploy
 ```
+

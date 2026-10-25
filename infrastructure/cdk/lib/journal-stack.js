@@ -53,3 +53,4 @@ class JournalStack extends Stack {
 }
 
 module.exports = { JournalStack };
+
