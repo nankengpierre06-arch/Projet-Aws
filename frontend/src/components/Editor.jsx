@@ -21,12 +21,21 @@ export default function Editor({ user, docId, onOpenShare, onOpenCreateLink, onO
   const [errorMsg, setErrorMsg] = useState('');
   const [isBlocked, setIsBlocked] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
+  const [wsConnected, setWsConnected] = useState(false);
 
   useEffect(() => {
-    if (!editorRef.current) return;
+    const container = editorRef.current;
+    if (!container) return;
 
-    // 1. Initialiser Quill
-    const quill = new Quill(editorRef.current, {
+    // 1. Éviter le dédoublement de la barre d'outils en React Strict Mode
+    if (container.parentElement) {
+      const prevToolbars = container.parentElement.querySelectorAll('.ql-toolbar');
+      prevToolbars.forEach(tb => tb.remove());
+    }
+    container.innerHTML = '';
+
+    // 2. Initialiser Quill
+    const quill = new Quill(container, {
       theme: 'snow',
       placeholder: 'Commencez à rédiger la revue ici...',
       modules: {
@@ -41,17 +50,28 @@ export default function Editor({ user, docId, onOpenShare, onOpenCreateLink, onO
     });
     quillInstance.current = quill;
 
-    // 2. Initialiser Yjs
+    // Mise à jour locale du décompte de caractères
+    quill.on('text-change', () => {
+      const text = quill.getText();
+      const currentLen = Math.max(0, text.length - 1);
+      setQuota(prev => ({
+        ...prev,
+        used: currentLen,
+        remaining: Math.max(0, prev.limit - currentLen)
+      }));
+    });
+
+    // 3. Initialiser Yjs
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
     const ytext = ydoc.getText('content');
 
     // Déterminer l'URL WebSocket
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${wsProtocol}//${window.location.hostname}:1234/ws/${docId}?email=${encodeURIComponent(user.email)}&name=${encodeURIComponent(user.name)}`;
+    const wsHost = `${wsProtocol}//${window.location.hostname}:1234`;
 
     const provider = new WebsocketProvider(
-      `${wsProtocol}//${window.location.hostname}:1234`,
+      wsHost,
       `ws/${docId}`,
       ydoc,
       {
@@ -63,7 +83,11 @@ export default function Editor({ user, docId, onOpenShare, onOpenCreateLink, onO
     );
     providerRef.current = provider;
 
-    // 3. Configurer l'Awareness (curseurs et présences)
+    provider.on('status', (event) => {
+      setWsConnected(event.status === 'connected');
+    });
+
+    // 4. Configurer l'Awareness (curseurs et présences)
     const userColor = COLORS[Math.floor(Math.random() * COLORS.length)];
     provider.awareness.setLocalStateField('user', {
       name: user.name,
@@ -77,10 +101,10 @@ export default function Editor({ user, docId, onOpenShare, onOpenCreateLink, onO
       setActiveUsers(users);
     });
 
-    // 4. Lier Quill et Yjs
+    // 5. Lier Quill et Yjs
     const binding = new QuillBinding(ytext, quill, provider.awareness);
 
-    // 5. Écouter les messages personnalisés du serveur (Quotas et Blocages)
+    // 6. Écouter les messages personnalisés du serveur (Quotas et Blocages)
     const handleWsMessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
@@ -108,9 +132,15 @@ export default function Editor({ user, docId, onOpenShare, onOpenCreateLink, onO
     }
 
     return () => {
-      binding.destroy();
-      provider.destroy();
-      ydoc.destroy();
+      try {
+        binding.destroy();
+        provider.destroy();
+        ydoc.destroy();
+      } catch {}
+      if (container && container.parentElement) {
+        const toolbars = container.parentElement.querySelectorAll('.ql-toolbar');
+        toolbars.forEach(tb => tb.remove());
+      }
     };
   }, [docId, user]);
 
@@ -163,6 +193,27 @@ export default function Editor({ user, docId, onOpenShare, onOpenCreateLink, onO
               {activeUsers.length > 5 && <span>+{activeUsers.length - 5}</span>}
             </div>
           </div>
+
+          {/* Indicateur de statut WebSocket */}
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            fontSize: '11px',
+            fontWeight: '600',
+            color: wsConnected ? '#16a34a' : '#d97706',
+            backgroundColor: wsConnected ? '#dcfce7' : '#fef3c7',
+            padding: '3px 9px',
+            borderRadius: '12px'
+          }}>
+            <span style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              backgroundColor: wsConnected ? '#16a34a' : '#d97706'
+            }} />
+            {wsConnected ? 'Synchronisé (Temps Réel)' : 'En attente serveur (ws:1234)'}
+          </span>
         </div>
 
         {/* Actions : Partager, Lien public, Versions */}

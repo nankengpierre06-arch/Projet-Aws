@@ -87,6 +87,19 @@ const localStore = {
 
   const pastThreeDays = new Date(now - 3 * 86400000).toISOString();
 
+  // Document principal de la rédaction
+  localStore.items.set('DOC#revue-principale#META', {
+    PK: 'DOC#revue-principale',
+    SK: 'META',
+    docId: 'revue-principale',
+    title: 'Revue Annuelle',
+    ownerEmail: 'admin@etudiant.fr',
+    authorizedWriters: ['admin@etudiant.fr', 'alice@etudiant.fr', 'bob@etudiant.fr'],
+    currentVersion: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+
   // 1. Revue 42 (En cours - Date/Heure passée - Tirage Ouvert)
   localStore.items.set('DOC#doc-revue-42#META', {
     PK: 'DOC#doc-revue-42',
