@@ -1137,8 +1137,10 @@ export default function WriterDashboardView({
             }}>
               {links.map(l => {
                 const now = Date.now();
-                const scheduledTime = l.scheduledAt ? new Date(l.scheduledAt).getTime() : 0;
-                const isUpcoming = scheduledTime > now;
+                const hasSchedule = Boolean(l.scheduledAt);
+                const scheduledTime = hasSchedule ? new Date(l.scheduledAt).getTime() : null;
+                const isPendingSchedule = !hasSchedule;
+                const isUpcoming = hasSchedule && scheduledTime > now;
                 const isExhausted = l.places_restantes <= 0;
 
                 return (
@@ -1166,13 +1168,15 @@ export default function WriterDashboardView({
                           fontWeight: '700',
                           padding: '2px 8px',
                           borderRadius: '6px',
-                          backgroundColor: isUpcoming ? '#fef3c7' : (isExhausted ? '#fee2e2' : '#dcfce7'),
-                          color: isUpcoming ? '#b45309' : (isExhausted ? '#b91c1c' : '#15803d')
+                          backgroundColor: isPendingSchedule ? '#fef3c7' : (isUpcoming ? '#f5f3ff' : (isExhausted ? '#fee2e2' : '#dcfce7')),
+                          color: isPendingSchedule ? '#b45309' : (isUpcoming ? '#6d28d9' : (isExhausted ? '#b91c1c' : '#15803d'))
                         }}>
-                          {isUpcoming ? (
+                          {isPendingSchedule ? (
+                            <><Clock size={12} /> En attente de programmation (Admin)</>
+                          ) : isUpcoming ? (
                             <><Lock size={12} /> À paraître</>
                           ) : isExhausted ? (
-                            <><AlertCircle size={12} /> Tirage Épuisé (410)</>
+                            <><AlertCircle size={12} /> Tirage Épuisé</>
                           ) : (
                             <><CheckCircle size={12} /> Tirage Ouvert</>
                           )}
@@ -1208,9 +1212,13 @@ export default function WriterDashboardView({
                         </div>
                       </div>
 
-                      <div style={{ fontSize: '11px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <div style={{ fontSize: '11px', color: isPendingSchedule ? '#b45309' : '#94a3b8', display: 'flex', alignItems: 'center', gap: '5px' }}>
                         <Clock size={12} />
-                        Annoncé pour : {l.scheduledAt ? new Date(l.scheduledAt).toLocaleString('fr-FR') : 'Immédiat'}
+                        {isPendingSchedule ? (
+                          <b>Date d'annonce : Non fixée (En attente de l'administrateur)</b>
+                        ) : (
+                          <span>Annoncé pour : {new Date(l.scheduledAt).toLocaleString('fr-FR')}</span>
+                        )}
                       </div>
                     </div>
 

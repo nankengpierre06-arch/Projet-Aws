@@ -80,4 +80,31 @@ router.get('/:linkId', async (req, res) => {
   });
 });
 
+// 4. Programmation officielle de la date et heure d'annonce (Réservé à l'Admin)
+router.patch('/:linkId/schedule', async (req, res) => {
+  const { linkId } = req.params;
+  const { scheduledAt, adminEmail = 'admin@etudiant.fr' } = req.body;
+
+  if (!scheduledAt) {
+    return res.status(400).json({
+      error: 'MISSING_SCHEDULED_AT',
+      message: 'La date et l\'heure d\'ouverture annoncée sont obligatoires.'
+    });
+  }
+
+  const result = await storage.scheduleDownloadLink(linkId, scheduledAt, adminEmail);
+  if (!result || !result.success) {
+    return res.status(404).json({
+      error: 'LINK_NOT_FOUND',
+      message: result?.error || 'Parution introuvable.'
+    });
+  }
+
+  return res.json({
+    message: 'Date et heure d\'annonce programmées avec succès par l\'administrateur.',
+    linkId,
+    link: result.link
+  });
+});
+
 module.exports = router;

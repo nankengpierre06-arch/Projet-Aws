@@ -852,6 +852,8 @@ class StorageAdapter {
   // ===========================================================================
 
   async createDownloadLink(linkId, docId, versionSeq, maxPlaces, creatorEmail, options = {}) {
+    const isExplicitlyPending = options.scheduledAt === null;
+    const scheduledAt = isExplicitlyPending ? null : (options.scheduledAt || new Date().toISOString());
     const item = {
       PK: `LINK#${linkId}`,
       SK: 'META',
@@ -859,7 +861,8 @@ class StorageAdapter {
       docId,
       title: options.title || `Revue Universitaire — Document ${docId}`,
       description: options.description || 'Édition numérique officielle de la revue étudiante.',
-      scheduledAt: options.scheduledAt || new Date().toISOString(),
+      scheduledAt,
+      scheduledBy: isExplicitlyPending ? null : (options.adminEmail || creatorEmail),
       versionSeq: parseInt(versionSeq, 10),
       maxPlaces: parseInt(maxPlaces, 10),
       places_restantes: parseInt(maxPlaces, 10),
@@ -879,7 +882,52 @@ class StorageAdapter {
         }));
       } catch {}
     }
+
+    // Si le lien a été créé par un rédacteur sans date d'annonce, notifier l'administrateur
+    if (isExplicitlyPending) {
+      await this.addNotification('admin@etudiant.fr', {
+        type: 'PUBLICATION_PENDING',
+        title: 'Parution en attente de programmation',
+        message: `Le rédacteur ${creatorEmail} a créé le lien "${item.title}". Veuillez fixer la date et l'heure d'annonce officielle.`,
+        linkId,
+        docId
+      });
+    }
+
     return item;
+  }
+
+  async scheduleDownloadLink(linkId, scheduledAt, adminEmail = 'admin@etudiant.fr') {
+    const item = await this.getLink(linkId);
+    if (!item) return { success: false, error: 'Parution introuvable' };
+
+    item.scheduledAt = scheduledAt;
+    item.scheduledBy = adminEmail;
+    item.updatedAt = new Date().toISOString();
+
+    localStore.items.set(`LINK#${linkId}#META`, item);
+
+    if (!this.forceMock && dynamoDoc) {
+      try {
+        await dynamoDoc.send(new PutCommand({
+          TableName: this.tableName,
+          Item: item
+        }));
+      } catch {}
+    }
+
+    // Notifier le créateur du lien que la parution a été officiellement programmée
+    if (item.creatorEmail && item.creatorEmail !== adminEmail) {
+      await this.addNotification(item.creatorEmail, {
+        type: 'PUBLICATION_SCHEDULED',
+        title: 'Date d\'annonce fixée par l\'Administration',
+        message: `L'administrateur a programmé l'ouverture officielle de votre parution "${item.title}" pour le ${new Date(scheduledAt).toLocaleString('fr-FR')}.`,
+        linkId,
+        docId: item.docId
+      });
+    }
+
+    return { success: true, link: item };
   }
 
   async getLink(linkId) {
@@ -896,10 +944,11 @@ class StorageAdapter {
 
     for (const [key, val] of localStore.items.entries()) {
       if (key.startsWith('LINK#') && key.endsWith('#META')) {
-        const scheduledTime = val.scheduledAt ? new Date(val.scheduledAt).getTime() : 0;
-        const isUpcoming = scheduledTime > now;
+        const hasSchedule = Boolean(val.scheduledAt);
+        const scheduledTime = hasSchedule ? new Date(val.scheduledAt).getTime() : null;
+        const isUpcoming = hasSchedule ? scheduledTime > now : true;
         const isExhausted = val.places_restantes <= 0;
-        const isOpen = !isUpcoming && !isExhausted;
+        const isOpen = hasSchedule && !isUpcoming && !isExhausted;
 
         publications.push({
           linkId: val.linkId,
@@ -909,11 +958,12 @@ class StorageAdapter {
           versionSeq: val.versionSeq,
           maxPlaces: val.maxPlaces || 500,
           places_restantes: val.places_restantes,
-          scheduledAt: val.scheduledAt || val.createdAt,
+          scheduledAt: val.scheduledAt || null,
+          scheduledBy: val.scheduledBy || null,
           isUpcoming,
           isOpen,
           isExhausted,
-          status: isUpcoming ? 'UPCOMING' : (isExhausted ? 'EXHAUSTED' : 'OPEN'),
+          status: !hasSchedule ? 'PENDING_SCHEDULE' : (isUpcoming ? 'UPCOMING' : (isExhausted ? 'EXHAUSTED' : 'OPEN')),
           pdfStatus: val.pdfStatus,
           createdAt: val.createdAt,
           creatorEmail: val.creatorEmail
@@ -925,7 +975,11 @@ class StorageAdapter {
     publications.sort((a, b) => {
       if (a.isOpen && !b.isOpen) return -1;
       if (!a.isOpen && b.isOpen) return 1;
-      if (a.isUpcoming && b.isUpcoming) return new Date(a.scheduledAt) - new Date(b.scheduledAt);
+      if (a.isUpcoming && b.isUpcoming) {
+        if (!a.scheduledAt) return 1;
+        if (!b.scheduledAt) return -1;
+        return new Date(a.scheduledAt) - new Date(b.scheduledAt);
+      }
       if (a.isUpcoming && !b.isUpcoming) return -1;
       if (!a.isUpcoming && b.isUpcoming) return 1;
       return new Date(b.createdAt) - new Date(a.createdAt);
@@ -947,8 +1001,17 @@ class StorageAdapter {
       return { success: false, reason: 'NOT_FOUND' };
     }
 
+    // Contrôle de date et heure annoncées : si pas encore programmé par l'admin, rejet
+    if (!link.scheduledAt) {
+      return {
+        success: false,
+        reason: 'NOT_YET_SCHEDULED',
+        message: 'Cette parution est en cours de programmation par l\'administration.'
+      };
+    }
+
     // Contrôle de date et heure annoncées : si pas encore ouvert, rejet immédiat
-    if (link.scheduledAt && new Date(link.scheduledAt).getTime() > Date.now()) {
+    if (new Date(link.scheduledAt).getTime() > Date.now()) {
       return {
         success: false,
         reason: 'NOT_YET_OPEN',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Share2, Download, History, RotateCcw, Check, Copy, Calendar, Clock } from 'lucide-react';
+import { X, Share2, Download, History, RotateCcw, Check, Copy, Calendar, Clock, Lock } from 'lucide-react';
 
 export function ShareModal({ docId, userEmail, onClose, onCollaboratorAdded }) {
   const [email, setEmail] = useState('');
@@ -67,7 +67,8 @@ export function ShareModal({ docId, userEmail, onClose, onCollaboratorAdded }) {
   );
 }
 
-export function CreateLinkModal({ docId, userEmail, onClose, onLinkCreated }) {
+export function CreateLinkModal({ docId, user, userEmail, onClose, onLinkCreated }) {
+  const isAdmin = user?.role === 'ADMIN' || userEmail === 'admin@etudiant.fr';
   const [title, setTitle] = useState(`Revue Étudiante — Document ${docId}`);
   const [description, setDescription] = useState('Édition numérique officielle préparée par la rédaction étudiante.');
   const [isImmediate, setIsImmediate] = useState(true);
@@ -81,9 +82,10 @@ export function CreateLinkModal({ docId, userEmail, onClose, onLinkCreated }) {
     e.preventDefault();
     setLoading(true);
 
-    const scheduledAt = isImmediate || !scheduledDateTime 
-      ? new Date().toISOString() 
-      : new Date(scheduledDateTime).toISOString();
+    // Seul l'administrateur peut fixer la date et l'heure d'ouverture annoncée
+    const scheduledAt = isAdmin
+      ? (isImmediate || !scheduledDateTime ? new Date().toISOString() : new Date(scheduledDateTime).toISOString())
+      : null;
 
     try {
       const res = await fetch('/api/links', {
@@ -95,14 +97,14 @@ export function CreateLinkModal({ docId, userEmail, onClose, onLinkCreated }) {
           description,
           scheduledAt,
           maxPlaces: parseInt(maxPlaces, 10),
-          creatorEmail: userEmail
+          creatorEmail: userEmail || user?.email
         })
       });
       const data = await res.json();
       setCreatedLink(data);
       if (onLinkCreated) onLinkCreated(data);
     } catch {
-      alert('Erreur lors de la programmation de la parution');
+      alert('Erreur lors de la création du lien de parution');
     } finally {
       setLoading(false);
     }
@@ -121,7 +123,9 @@ export function CreateLinkModal({ docId, userEmail, onClose, onLinkCreated }) {
         <div style={headerStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Download size={18} color="var(--primary)" />
-            <h3 style={{ fontSize: '15px', fontWeight: 'bold' }}>Publier une Parution en Production</h3>
+            <h3 style={{ fontSize: '15px', fontWeight: 'bold' }}>
+              {isAdmin ? 'Publier et Programmer une Parution (Admin)' : 'Créer un Lien de Parution'}
+            </h3>
           </div>
           <button onClick={onClose} style={closeBtnStyle}><X size={18} /></button>
         </div>
@@ -129,7 +133,9 @@ export function CreateLinkModal({ docId, userEmail, onClose, onLinkCreated }) {
           {!createdLink ? (
             <form onSubmit={handleCreate}>
               <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px' }}>
-                Programmez une nouvelle parution officielle sur le kiosque. Elle sera visible sur la page d'accueil avec son statut et son compte à rebours.
+                {isAdmin
+                  ? "Définissez les détails et fixez la date et l'heure officielles d'ouverture du tirage."
+                  : "Préparez le lien officiel de parution pour ce document. La date et l'heure d'annonce officielle seront fixées exclusivement par l'administrateur."}
               </p>
 
               <label style={{ fontSize: '12px', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
@@ -154,44 +160,68 @@ export function CreateLinkModal({ docId, userEmail, onClose, onLinkCreated }) {
                 required
               />
 
-              <div style={{ marginBottom: '14px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <label style={{ fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', color: '#1e293b' }}>
-                  <Calendar size={14} color="#4338ca" />
-                  Date et heure d'ouverture annoncée :
-                </label>
-
-                <div style={{ display: 'flex', gap: '14px', alignItems: 'center', marginBottom: '8px' }}>
-                  <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
-                    <input
-                      type="radio"
-                      name="scheduleType"
-                      checked={isImmediate}
-                      onChange={() => setIsImmediate(true)}
-                    />
-                    Immédiate (Tirage ouvert dès maintenant)
+              {/* DATE ET HEURE D'ANNONCE : VISIBLE ET MODIFIABLE UNIQUEMENT PAR L'ADMIN */}
+              {isAdmin ? (
+                <div style={{ marginBottom: '14px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <label style={{ fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', color: '#1e293b' }}>
+                    <Calendar size={14} color="#4338ca" />
+                    Date et heure d'ouverture annoncée :
                   </label>
 
-                  <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                  <div style={{ display: 'flex', gap: '14px', alignItems: 'center', marginBottom: '8px' }}>
+                    <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="scheduleType"
+                        checked={isImmediate}
+                        onChange={() => setIsImmediate(true)}
+                      />
+                      Immédiate (Tirage ouvert dès maintenant)
+                    </label>
+
+                    <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name="scheduleType"
+                        checked={!isImmediate}
+                        onChange={() => setIsImmediate(false)}
+                      />
+                      Programmée (Date et heure précises)
+                    </label>
+                  </div>
+
+                  {!isImmediate && (
                     <input
-                      type="radio"
-                      name="scheduleType"
-                      checked={!isImmediate}
-                      onChange={() => setIsImmediate(false)}
+                      type="datetime-local"
+                      value={scheduledDateTime}
+                      onChange={(e) => setScheduledDateTime(e.target.value)}
+                      style={{ width: '100%', padding: '6px 8px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      required={!isImmediate}
                     />
-                    Programmée (Date et heure précises)
-                  </label>
+                  )}
                 </div>
-
-                {!isImmediate && (
-                  <input
-                    type="datetime-local"
-                    value={scheduledDateTime}
-                    onChange={(e) => setScheduledDateTime(e.target.value)}
-                    style={{ width: '100%', padding: '6px 8px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-                    required={!isImmediate}
-                  />
-                )}
-              </div>
+              ) : (
+                <div style={{
+                  marginBottom: '14px',
+                  padding: '12px 14px',
+                  backgroundColor: '#f8fafc',
+                  borderRadius: '8px',
+                  border: '1px solid #e2e8f0',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '10px'
+                }}>
+                  <Lock size={16} color="#7c3aed" style={{ marginTop: '2px', flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontSize: '12px', fontWeight: '700', color: '#1e293b', marginBottom: '2px' }}>
+                      Programmation réservée à l'Administration
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: '#64748b', lineHeight: '1.4' }}>
+                      En tant que rédacteur, vous générez le lien de parution. La date et l'heure d'annonce officielle du tirage seront fixées exclusivement par l'administrateur.
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <label style={{ fontSize: '12px', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
                 Quota d'exemplaires certifiés (Tirage limité) :
@@ -209,18 +239,22 @@ export function CreateLinkModal({ docId, userEmail, onClose, onLinkCreated }) {
               <button
                 type="submit"
                 disabled={loading}
-                style={{ width: '100%', padding: '10px', backgroundColor: '#4338ca', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}
+                style={{ width: '100%', padding: '11px', backgroundColor: '#7c3aed', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}
               >
-                {loading ? 'Publication en cours...' : `Publier la Parution (${maxPlaces} places)`}
+                {loading 
+                  ? 'Enregistrement en cours...' 
+                  : (isAdmin ? `Publier et Programmer la Parution (${maxPlaces} places)` : `Créer le Lien de Parution (${maxPlaces} places)`)}
               </button>
             </form>
           ) : (
             <div>
               <div style={{ padding: '12px', backgroundColor: 'var(--success-bg)', color: 'var(--success)', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', marginBottom: '12px' }}>
-                Parution enregistrée avec succès ! Quota : {createdLink.maxPlaces} exemplaires.
+                ✓ {isAdmin ? 'Parution enregistrée et programmée avec succès !' : 'Lien de parution créé avec succès !'} Quota : {createdLink.maxPlaces} exemplaires.
               </div>
-              <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>
-                La parution est désormais accessible sur le kiosque de la page d'accueil.
+              <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px', lineHeight: '1.4' }}>
+                {isAdmin
+                  ? "La parution est désormais accessible avec sa date d'annonce officielle."
+                  : "Le lien a été transmis à l'administrateur. La date et l'heure d'ouverture annoncée seront fixées dans la console d'administration."}
               </p>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
                 <input

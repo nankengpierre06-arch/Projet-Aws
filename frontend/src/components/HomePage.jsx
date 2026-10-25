@@ -180,10 +180,11 @@ export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, o
 
   // Filtrage des parutions
   const filteredPubs = publications.filter(pub => {
-    const scheduledTime = pub.scheduledAt ? new Date(pub.scheduledAt).getTime() : 0;
-    const isUpcoming = scheduledTime > now.getTime();
+    const hasSchedule = Boolean(pub.scheduledAt);
+    const scheduledTime = hasSchedule ? new Date(pub.scheduledAt).getTime() : null;
+    const isUpcoming = hasSchedule ? scheduledTime > now.getTime() : true;
     const isExhausted = pub.places_restantes <= 0;
-    const isOpen = !isUpcoming && !isExhausted;
+    const isOpen = hasSchedule && !isUpcoming && !isExhausted;
 
     if (filter === 'OPEN') return isOpen;
     if (filter === 'UPCOMING') return isUpcoming;
@@ -404,11 +405,12 @@ export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, o
         {/* Grille des Parutions */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))', gap: '24px' }}>
           {filteredPubs.map(pub => {
-            const scheduledTime = pub.scheduledAt ? new Date(pub.scheduledAt).getTime() : 0;
-            const isUpcoming = scheduledTime > now.getTime();
+            const hasSchedule = Boolean(pub.scheduledAt);
+            const scheduledDateObj = hasSchedule ? new Date(pub.scheduledAt) : null;
+            const isUpcoming = hasSchedule ? scheduledDateObj.getTime() > now.getTime() : false;
+            const isPendingSchedule = !hasSchedule;
             const isExhausted = pub.places_restantes <= 0;
-            const isOpen = !isUpcoming && !isExhausted;
-            const scheduledDateObj = pub.scheduledAt ? new Date(pub.scheduledAt) : null;
+            const isOpen = hasSchedule && !isUpcoming && !isExhausted;
 
             return (
               <div
@@ -416,9 +418,9 @@ export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, o
                 style={{
                   backgroundColor: '#ffffff',
                   borderRadius: '12px',
-                  border: isOpen ? '2px solid #d8b4fe' : '1px solid #e2e8f0',
+                  border: isOpen ? '2px solid #86efac' : (isPendingSchedule ? '2px dashed #fde68a' : '1px solid #e2e8f0'),
                   boxShadow: isOpen 
-                    ? '0 10px 25px -5px rgba(107, 33, 168, 0.12), 0 8px 10px -6px rgba(107, 33, 168, 0.08)' 
+                    ? '0 10px 25px -5px rgba(22, 163, 74, 0.15)' 
                     : '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                   display: 'flex',
                   flexDirection: 'column',
@@ -429,13 +431,27 @@ export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, o
                 {/* Bandeau d'état */}
                 <div style={{
                   padding: '12px 18px',
-                  backgroundColor: isOpen ? '#faf5ff' : (isUpcoming ? '#fef3c7' : '#f1f5f9'),
+                  backgroundColor: isPendingSchedule ? '#fffbeb' : (isOpen ? '#f0fdf4' : (isUpcoming ? '#f5f3ff' : '#f1f5f9')),
                   borderBottom: '1px solid #e2e8f0',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between'
                 }}>
                   {/* Statut Badge */}
+                  {isPendingSchedule && (
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      fontSize: '11.5px',
+                      fontWeight: '700',
+                      color: '#b45309'
+                    }}>
+                      <Clock size={14} color="#b45309" />
+                      EN ATTENTE DE PROGRAMMATION (ADMIN)
+                    </span>
+                  )}
+
                   {isOpen && (
                     <span style={{
                       display: 'inline-flex',
@@ -457,9 +473,9 @@ export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, o
                       gap: '6px',
                       fontSize: '12px',
                       fontWeight: '700',
-                      color: '#b45309'
+                      color: '#6d28d9'
                     }}>
-                      <Clock size={14} color="#b45309" />
+                      <Clock size={14} color="#6d28d9" />
                       À PARAÎTRE (ANNONCÉ)
                     </span>
                   )}
@@ -496,33 +512,39 @@ export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, o
 
                   {/* Bloc Date et Heure Annoncées */}
                   <div style={{
-                    backgroundColor: isUpcoming ? '#fffbeb' : '#faf5ff',
+                    backgroundColor: isPendingSchedule ? '#fffbeb' : (isUpcoming ? '#fef3c7' : '#faf5ff'),
                     padding: '12px 14px',
                     borderRadius: '8px',
                     border: '1px solid',
-                    borderColor: isUpcoming ? '#fde68a' : '#f3e8ff',
+                    borderColor: isPendingSchedule ? '#fde68a' : (isUpcoming ? '#fde68a' : '#f3e8ff'),
                     marginBottom: '18px'
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '700', color: isUpcoming ? '#b45309' : '#6b21a8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '700', color: isPendingSchedule ? '#b45309' : (isUpcoming ? '#b45309' : '#6b21a8'), textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                       <Calendar size={13} />
                       Date et heure annoncées :
                     </div>
 
-                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b', marginTop: '4px' }}>
-                      {scheduledDateObj ? scheduledDateObj.toLocaleDateString('fr-FR', {
-                        weekday: 'long',
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                      }) : 'Disponible'}
-                      {' à '}
-                      <span style={{ color: isUpcoming ? '#b45309' : '#6b21a8', fontWeight: '800' }}>
-                        {scheduledDateObj ? scheduledDateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '14:00'}
-                      </span>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: isPendingSchedule ? '#b45309' : '#1e293b', marginTop: '4px' }}>
+                      {isPendingSchedule ? (
+                        "En attente de fixation par l'administrateur"
+                      ) : (
+                        <>
+                          {scheduledDateObj.toLocaleDateString('fr-FR', {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric'
+                          })}
+                          {' à '}
+                          <span style={{ color: isUpcoming ? '#b45309' : '#6b21a8', fontWeight: '800' }}>
+                            {scheduledDateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </>
+                      )}
                     </div>
 
                     {/* Si À venir : Compte à rebours temps réel */}
-                    {isUpcoming && (
+                    {isUpcoming && scheduledDateObj && (
                       <div style={{
                         marginTop: '8px',
                         paddingTop: '8px',
@@ -561,10 +583,37 @@ export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, o
 
                   {/* ======================================================== */}
                   {/* BOUTON DE TÉLÉCHARGEMENT DYNAMIQUE                       */}
+                  {/* - Inactif si en attente de programmation (Admin)         */}
                   {/* - Inactif si la date/heure n'est pas encore arrivée      */}
                   {/* - Actif si la date/heure est passée et quota > 0        */}
                   {/* ======================================================== */}
-                  {isUpcoming ? (
+                  {isPendingSchedule ? (
+                    <div>
+                      <button
+                        disabled={true}
+                        style={{
+                          width: '100%',
+                          padding: '12px 16px',
+                          backgroundColor: '#f8fafc',
+                          color: '#94a3b8',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          fontSize: '13px',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          cursor: 'not-allowed'
+                        }}
+                      >
+                        <Lock size={16} /> En attente de programmation (Admin)
+                      </button>
+                      <p style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', marginTop: '6px' }}>
+                        L'administrateur fixera la date et l'heure officielles d'ouverture.
+                      </p>
+                    </div>
+                  ) : isUpcoming ? (
                     <div>
                       <button
                         disabled={true}

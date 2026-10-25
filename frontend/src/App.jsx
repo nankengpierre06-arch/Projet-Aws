@@ -483,6 +483,7 @@ export default function App() {
         {currentView === 'admin' && user && user.role === 'ADMIN' && (
           <div style={{ flex: 1 }}>
             <AdminDashboard
+              user={user}
               onBackToHome={() => setCurrentView('home')}
               onGoEditor={() => {
                 setWriterTab('DOCS');
@@ -517,11 +518,13 @@ export default function App() {
       {showCreateLinkModal && (
         <CreateLinkModal
           docId={docId}
+          user={user}
           userEmail={user?.email}
           onClose={() => setShowCreateLinkModal(false)}
           onLinkCreated={(link) => {
             setDownloadLinkId(link.linkId);
             setSidebarRefreshKey(k => k + 1);
+            loadUserDocuments();
           }}
         />
       )}

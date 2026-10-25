@@ -121,6 +121,13 @@ router.get('/:linkId', async (req, res) => {
         });
       }
 
+      if (decResult.reason === 'NOT_YET_SCHEDULED') {
+        return res.status(403).json({
+          error: 'PARUTION_NOT_YET_SCHEDULED',
+          message: 'Cette parution est en cours de programmation par l\'administration. La date et heure officielles seront bientôt fixées.'
+        });
+      }
+
       if (decResult.reason === 'NOT_YET_OPEN') {
         return res.status(403).json({
           error: 'PARUTION_NOT_YET_OPEN',
