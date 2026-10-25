@@ -1,0 +1,27 @@
+{
+  "name": "revue-collaborative-backend",
+  "version": "1.0.0",
+  "description": "Backend haute performance pour l'éditeur collaboratif et la distribution de la revue numérique",
+  "main": "bin/server.js",
+  "scripts": {
+    "start": "node bin/server.js",
+    "start:api": "node src/api/server.js",
+    "start:collab": "node src/collab/server.js",
+    "start:worker": "node src/worker/pdf-worker.js",
+    "dev": "node bin/server.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.600.0",
+    "@aws-sdk/client-s3": "^3.600.0",
+    "@aws-sdk/client-sns": "^3.600.0",
+    "@aws-sdk/client-sqs": "^3.600.0",
+    "@aws-sdk/lib-dynamodb": "^3.600.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "uuid": "^9.0.1",
+    "ws": "^8.17.0",
+    "y-websocket": "^1.5.4",
+    "yjs": "^13.6.14"
+  }
+}
