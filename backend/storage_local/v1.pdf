@@ -9,24 +9,26 @@ endobj
 << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
 endobj
 4 0 obj
-<< /Length 632 >>
+<< /Length 797 >>
 stream
 BT
 /F1 12 Tf
 40 780 Td
 16 TL
 (======================================================) '
-(              REVUE TEST                  ) '
+(              REVUE TEST C1 GRAND PIC                  ) '
 (            Version Certifiee #1         ) '
 (======================================================) '
 () '
-(Date de parution : 25/10/2026 a 08:22:26) '
-(Identifiant du document : doc-test2) '
+(Date de parution : 25/10/2026 a 08:57:24) '
+(Identifiant du document : doc-3e1d016e) '
 () '
 (------------------------------------------------------) '
 (CONTENU DE L'EDITION :) '
 (------------------------------------------------------) '
-(Contenu super!) '
+(Contenu officiel certifié de la revue #1.
+Édité de façon collaborative par les étudiants.
+Ce document reflète l'état stabilisé \(Instantané T1\) du texte.) '
 () '
 (------------------------------------------------------) '
 (Exemplaire unique certifie conforme - Distribution officielle) '
@@ -43,9 +45,9 @@ xref
 0000000058 00000 n 
 0000000115 00000 n 
 0000000241 00000 n 
-0000000923 00000 n 
+0000001088 00000 n 
 trailer
 << /Size 6 /Root 1 0 R >>
 startxref
-993
+1158
 %%EOF

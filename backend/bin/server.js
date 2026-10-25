@@ -5,7 +5,7 @@
  * 3. Worker de compilation PDF asynchrone (Consommateur SQS)
  */
 const apiApp = require('../src/api/app');
-const CollabServer = require('../src/collab/server');
+const collabServer = require('../src/collab/server');
 const PdfWorker = require('../src/worker/pdf-worker');
 const config = require('../src/config');
 
@@ -18,8 +18,7 @@ const apiServer = apiApp.listen(config.portApi, () => {
   console.log(`[1/3] Passerelle REST & Gatekeeper active sur http://127.0.0.1:${config.portApi}`);
 });
 
-// 2. Démarrer le serveur de collaboration WSS
-const collabServer = new CollabServer(config.portCollab);
+// 2. Démarrer le serveur de collaboration WSS (Singleton)
 collabServer.start();
 console.log(`[2/3] Serveur de synchronisation WSS actif sur ws://127.0.0.1:${config.portCollab}`);
 
@@ -43,4 +42,3 @@ process.on('SIGINT', () => {
   pdfWorker.stop();
   process.exit(0);
 });
-
