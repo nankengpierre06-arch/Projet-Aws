@@ -292,7 +292,14 @@ export default function App() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc' }}>
+    <div style={{
+      height: currentView === 'editor' ? '100vh' : 'auto',
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      backgroundColor: '#f8fafc',
+      overflow: currentView === 'editor' ? 'hidden' : 'visible'
+    }}>
       {/* HEADER GLOBAL AVEC BOUTON D'AUTHENTIFICATION */}
       <Navbar
         user={user}
@@ -306,7 +313,13 @@ export default function App() {
       />
 
       {/* CONTENU PRINCIPAL SELON LA VUE */}
-      <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+      <main style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        height: currentView === 'editor' ? 'calc(100vh - 64px)' : 'auto',
+        overflow: 'hidden'
+      }}>
         {/* 1. Page d'accueil publique (Visible par tous dès le lancement) */}
         {currentView === 'home' && (
           <HomePage
@@ -348,6 +361,10 @@ export default function App() {
               unreadNotifsCount={notifications.filter(n => !n.read).length}
               linksCount={publications.length}
               onSelectTab={(tab) => setWriterTab(tab)}
+              onCreateDocClick={() => {
+                setWriterTab('DOCS');
+              }}
+              onLogout={handleLogout}
               quota={dailyQuota}
             />
 
