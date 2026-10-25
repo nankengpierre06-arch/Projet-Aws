@@ -1,0 +1,18 @@
+[Unit]
+Description=Worker de Compilation PDF Asynchrone SQS (Typst)
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+WorkingDirectory=/var/www/journal/backend
+EnvironmentFile=/etc/journal.env
+ExecStart=/usr/bin/node src/worker/pdf-worker.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
