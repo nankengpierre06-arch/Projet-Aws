@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, Plus, Archive, Trash2, Edit3, Clock, Users, 
   CheckCircle, AlertCircle, Folder, Share2, History, Download, 
-  Search, ArrowRight, RotateCcw, Bell, Check, Sparkles
+  Search, ArrowRight, RotateCcw, Bell, Check, Sparkles, Link2, 
+  Copy, Calendar, ShieldCheck, Lock, ExternalLink
 } from 'lucide-react';
 
 export default function WriterDashboardView({
-  activeTab = 'DOCS', // 'DOCS' | 'SHARED' | 'NOTIFS'
+  activeTab = 'DOCS', // 'DOCS' | 'SHARED' | 'VERSIONS' | 'LINKS' | 'NOTIFS'
   user,
   ownedDocs = [],
   sharedDocs = [],
   notifications = [],
+  links = [],
   onOpenDoc,
   onCreateDoc,
   onArchiveDoc,
@@ -24,6 +26,83 @@ export default function WriterDashboardView({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [creating, setCreating] = useState(false);
+
+  // État spécifique pour la vue VERSIONS
+  const [selectedVersionDocId, setSelectedVersionDocId] = useState(() => {
+    return ownedDocs.length > 0 ? ownedDocs[0].docId : '';
+  });
+  const [docVersions, setDocVersions] = useState([]);
+  const [loadingVersions, setLoadingVersions] = useState(false);
+  const [versionFeedback, setVersionFeedback] = useState('');
+
+  // État spécifique pour la vue LIENS DE PARUTION
+  const [copiedLinkId, setCopiedLinkId] = useState(null);
+
+  // Mettre à jour le docId sélectionné pour les versions si ownedDocs change
+  useEffect(() => {
+    if (!selectedVersionDocId && ownedDocs.length > 0) {
+      setSelectedVersionDocId(ownedDocs[0].docId);
+    }
+  }, [ownedDocs, selectedVersionDocId]);
+
+  // Charger les versions du document sélectionné
+  const loadDocVersions = (targetDocId) => {
+    if (!targetDocId) return;
+    setLoadingVersions(true);
+    fetch(`/api/documents/${encodeURIComponent(targetDocId)}/versions`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && Array.isArray(data.versions)) {
+          setDocVersions(data.versions);
+        } else {
+          setDocVersions([]);
+        }
+      })
+      .catch(() => setDocVersions([]))
+      .finally(() => setLoadingVersions(false));
+  };
+
+  useEffect(() => {
+    if (activeTab === 'VERSIONS' && selectedVersionDocId) {
+      loadDocVersions(selectedVersionDocId);
+    }
+  }, [activeTab, selectedVersionDocId]);
+
+  const handleCreateSnapshot = async () => {
+    if (!selectedVersionDocId) return;
+    const label = window.prompt("Nom / libellé de l'instantané figé T1 :", `Relecture du ${new Date().toLocaleDateString('fr-FR')}`);
+    if (!label) return;
+
+    try {
+      const res = await fetch(`/api/documents/${encodeURIComponent(selectedVersionDocId)}/versions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label, authorEmail: user.email })
+      });
+      const data = await res.json();
+      setVersionFeedback(`✓ Instantané #${data.versionSeq} créé avec succès !`);
+      setTimeout(() => setVersionFeedback(''), 4000);
+      loadDocVersions(selectedVersionDocId);
+    } catch {
+      alert("Erreur lors de la création de l'instantané.");
+    }
+  };
+
+  const handleRestoreVersion = async (versionSeq) => {
+    const confirmed = window.confirm(`Voulez-vous restaurer le document à la version #${versionSeq} ? Le texte actuel sera remplacé et synchronisé sur tous les postes.`);
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/documents/${encodeURIComponent(selectedVersionDocId)}/restore/${versionSeq}`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      setVersionFeedback(`✓ Version #${versionSeq} restaurée dans l'éditeur !`);
+      setTimeout(() => setVersionFeedback(''), 4000);
+    } catch {
+      alert("Erreur lors de la restauration.");
+    }
+  };
 
   // Filtrage des documents créés par le rédacteur
   const filteredOwnedDocs = ownedDocs.filter(doc => {
@@ -55,6 +134,14 @@ export default function WriterDashboardView({
     } finally {
       setCreating(false);
     }
+  };
+
+  const copyLink = (linkId) => {
+    const url = `${window.location.origin}/#/download/${linkId}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedLinkId(linkId);
+      setTimeout(() => setCopiedLinkId(null), 2500);
+    });
   };
 
   return (
@@ -102,7 +189,7 @@ export default function WriterDashboardView({
                 Mes Documents de Rédaction
               </h1>
               <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>
-                Consultez, modifiez, archivez ou publiez vos articles pour la revue étudiante.
+                Gérez vos articles, ouvrez-les dans l'éditeur, archivez-les ou supprimez-les.
               </p>
             </div>
 
@@ -272,8 +359,7 @@ export default function WriterDashboardView({
                       flexDirection: 'column',
                       justifyContent: 'space-between',
                       boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)',
-                      transition: 'all 0.15s ease',
-                      position: 'relative'
+                      transition: 'all 0.15s ease'
                     }}
                   >
                     <div>
@@ -328,7 +414,7 @@ export default function WriterDashboardView({
                         </span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                           <Users size={12} />
-                          {(doc.authorizedWriters || []).length || 1} collaborateur(s)
+                          {(doc.authorizedWriters || []).length || 1} rédacteur(s)
                         </span>
                         <span style={{ fontSize: '10.5px', color: '#94a3b8' }}>
                           ID : #{doc.docId}
@@ -372,7 +458,7 @@ export default function WriterDashboardView({
                         {/* Bouton Archiver / Désarchiver */}
                         <button
                           onClick={() => onArchiveDoc(doc.docId, !isArchived)}
-                          title={isArchived ? "Désarchiver et rendre à nouveau actif" : "Archiver ce document"}
+                          title={isArchived ? "Désarchiver et rendre actif" : "Archiver ce document"}
                           style={{
                             flex: 1,
                             display: 'flex',
@@ -412,7 +498,7 @@ export default function WriterDashboardView({
                         {/* Bouton Parution */}
                         <button
                           onClick={() => onOpenCreateLink(doc.docId)}
-                          title="Générer un lien de parution (500 exemplaires)"
+                          title="Générer un lien de parution (500 exemplaires certifiés)"
                           style={{
                             padding: '6px 9px',
                             backgroundColor: '#ffffff',
@@ -592,7 +678,418 @@ export default function WriterDashboardView({
       )}
 
       {/* ===================================================================== */}
-      {/* 3. VUE : CENTRE DE NOTIFICATIONS & ALERTES                            */}
+      {/* 3. VUE : VERSIONS & INSTANTANÉS T1 (CONTRAINTE C3)                     */}
+      {/* ===================================================================== */}
+      {activeTab === 'VERSIONS' && (
+        <div style={{ maxWidth: '1000px', width: '100%', margin: '0 auto' }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            marginBottom: '24px',
+            flexWrap: 'wrap',
+            gap: '16px'
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  color: '#0891b2',
+                  backgroundColor: '#ecfeff',
+                  border: '1px solid #a5f3fc',
+                  padding: '3px 9px',
+                  borderRadius: '6px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}>
+                  Contrainte C3 & EF06/EF07
+                </span>
+              </div>
+              <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em' }}>
+                Historique des Versions & Instantanés T1
+              </h1>
+              <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>
+                Gérez les instantanés figés et restaurez les versions des documents dont vous êtes le propriétaire.
+              </p>
+            </div>
+
+            <button
+              onClick={handleCreateSnapshot}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 18px',
+                backgroundColor: '#0891b2',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(8, 145, 178, 0.25)'
+              }}
+            >
+              <Plus size={16} /> Créer un Instantané T1 Figé
+            </button>
+          </div>
+
+          {/* Sélecteur de document propriétaire */}
+          <div style={{
+            backgroundColor: '#ffffff',
+            padding: '16px 20px',
+            borderRadius: '12px',
+            border: '1px solid #e2e8f0',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>
+                Document sélectionné :
+              </span>
+              <select
+                value={selectedVersionDocId}
+                onChange={(e) => setSelectedVersionDocId(e.target.value)}
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '13px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: '#ffffff',
+                  fontWeight: '600',
+                  color: '#0f172a'
+                }}
+              >
+                {ownedDocs.map(d => (
+                  <option key={d.docId} value={d.docId}>
+                    {d.title} (#{d.docId})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedVersionDocId && (
+              <button
+                onClick={() => onOpenDoc(selectedVersionDocId)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 14px',
+                  backgroundColor: '#f1f5f9',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  color: '#475569',
+                  cursor: 'pointer'
+                }}
+              >
+                <Edit3 size={14} /> Ouvrir ce document dans l'Éditeur
+              </button>
+            )}
+          </div>
+
+          {versionFeedback && (
+            <div style={{
+              padding: '10px 16px',
+              backgroundColor: '#dcfce7',
+              color: '#15803d',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '13px',
+              fontWeight: '600'
+            }}>
+              {versionFeedback}
+            </div>
+          )}
+
+          {/* Liste des versions */}
+          {loadingVersions ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+              Chargement des instantanés T1...
+            </div>
+          ) : docVersions.length === 0 ? (
+            <div style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              border: '1px dashed #cbd5e1',
+              padding: '40px',
+              textAlign: 'center'
+            }}>
+              <History size={36} color="#94a3b8" style={{ margin: '0 auto 10px auto' }} />
+              <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#334155' }}>Aucun instantané figé</h3>
+              <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+                Cliquez sur « Créer un Instantané T1 Figé » pour capturer l'état actuel de ce document.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {docVersions.map(ver => (
+                <div
+                  key={ver.versionSeq}
+                  style={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: '10px',
+                    border: '1px solid #e2e8f0',
+                    padding: '16px 20px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '16px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+                      <span style={{
+                        fontSize: '12px',
+                        fontWeight: '800',
+                        color: '#0891b2',
+                        backgroundColor: '#ecfeff',
+                        padding: '2px 8px',
+                        borderRadius: '4px'
+                      }}>
+                        Version #{ver.versionSeq}
+                      </span>
+                      <span style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>
+                        {ver.label || `Instantané v${ver.versionSeq}`}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px', color: '#64748b' }}>
+                      <span>Auteur : <b>{ver.authorEmail}</b></span>
+                      <span>•</span>
+                      <span>Taille : {ver.charLength || 0} caractères</span>
+                      <span>•</span>
+                      <span>Date : {new Date(ver.createdAt).toLocaleString('fr-FR')}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleRestoreVersion(ver.versionSeq)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '7px 14px',
+                      backgroundColor: '#ffffff',
+                      border: '1px solid #0891b2',
+                      color: '#0891b2',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <RotateCcw size={13} /> Restaurer cette Version
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* 4. VUE : LIENS DE PARUTION PUBLIQUE (CONTRAINTE C1 - 500 EX.)          */}
+      {/* ===================================================================== */}
+      {activeTab === 'LINKS' && (
+        <div style={{ maxWidth: '1100px', width: '100%', margin: '0 auto' }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            marginBottom: '28px',
+            flexWrap: 'wrap',
+            gap: '16px'
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  color: '#059669',
+                  backgroundColor: '#ecfdf5',
+                  border: '1px solid #a7f3d0',
+                  padding: '3px 9px',
+                  borderRadius: '6px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em'
+                }}>
+                  Contrainte C1 & EF03/EF04
+                </span>
+              </div>
+              <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em' }}>
+                Liens de Parution Publique (500 ex.)
+              </h1>
+              <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>
+                Publications certifiées soumises au quota strict de 500 exemplaires et à la programmation horaire.
+              </p>
+            </div>
+
+            <button
+              onClick={() => onOpenCreateLink(ownedDocs[0]?.docId)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '9px 18px',
+                backgroundColor: '#059669',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(5, 150, 105, 0.25)'
+              }}
+            >
+              <Plus size={16} /> Créer un Lien de Parution
+            </button>
+          </div>
+
+          {links.length === 0 ? (
+            <div style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              border: '1px dashed #cbd5e1',
+              padding: '60px 20px',
+              textAlign: 'center'
+            }}>
+              <Link2 size={44} color="#94a3b8" style={{ margin: '0 auto 12px auto' }} />
+              <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#334155' }}>Aucune parution enregistrée</h3>
+              <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+                Générez un lien de parution pour rendre un document téléchargeable par les visiteurs (500 exemplaires max).
+              </p>
+            </div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))',
+              gap: '20px'
+            }}>
+              {links.map(l => {
+                const now = Date.now();
+                const scheduledTime = l.scheduledAt ? new Date(l.scheduledAt).getTime() : 0;
+                const isUpcoming = scheduledTime > now;
+                const isExhausted = l.places_restantes <= 0;
+
+                return (
+                  <div
+                    key={l.linkId}
+                    style={{
+                      backgroundColor: '#ffffff',
+                      borderRadius: '12px',
+                      border: '1px solid #e2e8f0',
+                      padding: '22px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      boxShadow: '0 2px 8px rgba(15, 23, 42, 0.04)'
+                    }}
+                  >
+                    <div>
+                      {/* Statut de parution */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <span style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          padding: '2px 8px',
+                          borderRadius: '6px',
+                          backgroundColor: isUpcoming ? '#fef3c7' : (isExhausted ? '#fee2e2' : '#dcfce7'),
+                          color: isUpcoming ? '#b45309' : (isExhausted ? '#b91c1c' : '#15803d')
+                        }}>
+                          {isUpcoming ? (
+                            <><Lock size={12} /> À paraître</>
+                          ) : isExhausted ? (
+                            <><AlertCircle size={12} /> Tirage Épuisé (410)</>
+                          ) : (
+                            <><CheckCircle size={12} /> Tirage Ouvert</>
+                          )}
+                        </span>
+
+                        <span style={{ fontSize: '11px', color: '#64748b' }}>
+                          Doc #{l.docId}
+                        </span>
+                      </div>
+
+                      <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '6px' }}>
+                        {l.title || `Parution ${l.linkId}`}
+                      </h3>
+
+                      <p style={{ fontSize: '12.5px', color: '#64748b', lineHeight: '1.4', marginBottom: '14px' }}>
+                        {l.description || 'Édition certifiée préparée pour les étudiants du campus.'}
+                      </p>
+
+                      {/* Quota bar */}
+                      <div style={{ marginBottom: '14px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11.5px', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: '600', color: '#334155' }}>Places restantes :</span>
+                          <span style={{ fontWeight: '700', color: isExhausted ? '#dc2626' : '#059669' }}>
+                            {l.places_restantes} / {l.maxPlaces || 500}
+                          </span>
+                        </div>
+                        <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{
+                            width: `${Math.min(100, Math.round(((l.maxPlaces - l.places_restantes) / l.maxPlaces) * 100))}%`,
+                            height: '100%',
+                            backgroundColor: isExhausted ? '#dc2626' : '#059669'
+                          }} />
+                        </div>
+                      </div>
+
+                      <div style={{ fontSize: '11px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <Clock size={12} />
+                        Annoncé pour : {l.scheduledAt ? new Date(l.scheduledAt).toLocaleString('fr-FR') : 'Immédiat'}
+                      </div>
+                    </div>
+
+                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '16px', marginTop: '16px' }}>
+                      <button
+                        onClick={() => copyLink(l.linkId)}
+                        style={{
+                          width: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '6px',
+                          padding: '8px 12px',
+                          backgroundColor: copiedLinkId === l.linkId ? '#dcfce7' : '#f1f5f9',
+                          border: '1px solid',
+                          borderColor: copiedLinkId === l.linkId ? '#86efac' : '#cbd5e1',
+                          color: copiedLinkId === l.linkId ? '#15803d' : '#334155',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {copiedLinkId === l.linkId ? (
+                          <><Check size={14} /> Lien Copié dans le Presse-Papier !</>
+                        ) : (
+                          <><Copy size={14} /> Copier le Lien Visiteur Public</>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* 5. VUE : CENTRE DE NOTIFICATIONS & ALERTES                            */}
       {/* ===================================================================== */}
       {activeTab === 'NOTIFS' && (
         <div style={{ maxWidth: '800px', width: '100%', margin: '0 auto' }}>
@@ -609,9 +1106,9 @@ export default function WriterDashboardView({
                 <span style={{
                   fontSize: '11px',
                   fontWeight: '700',
-                  color: '#7c3aed',
-                  backgroundColor: '#f5f3ff',
-                  border: '1px solid #ddd6fe',
+                  color: '#d97706',
+                  backgroundColor: '#fffbeb',
+                  border: '1px solid #fde68a',
                   padding: '3px 9px',
                   borderRadius: '6px',
                   textTransform: 'uppercase',
@@ -723,7 +1220,6 @@ export default function WriterDashboardView({
                     </div>
                   </div>
 
-                  {/* Si l'alerte concerne un document, bouton direct vers l'éditeur */}
                   {n.docId && (
                     <button
                       onClick={() => onOpenDoc(n.docId)}
@@ -772,13 +1268,13 @@ export default function WriterDashboardView({
             width: '90%',
             maxWidth: '460px',
             padding: '24px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
           }}>
             <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', marginBottom: '8px' }}>
               Créer un Nouveau Document
             </h2>
             <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '18px' }}>
-              Indiquez le titre de votre nouvel article ou numéro de la revue. Vous pourrez ensuite inviter des collaborateurs et publier le tirage.
+              Indiquez le titre de votre nouvel article. Il s'ouvrira immédiatement dans l'éditeur collaboratif.
             </p>
 
             <form onSubmit={handleCreateSubmit}>
@@ -788,7 +1284,7 @@ export default function WriterDashboardView({
                 </label>
                 <input
                   type="text"
-                  placeholder="ex: Enquête sur la Vie Étudiante 2026"
+                  placeholder="ex: Enquête sur la Mobilité Étudiante"
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   autoFocus
@@ -833,7 +1329,7 @@ export default function WriterDashboardView({
                     cursor: 'pointer'
                   }}
                 >
-                  {creating ? 'Création en cours...' : 'Créer & Ouvrir'}
+                  {creating ? 'Création...' : 'Créer & Ouvrir dans l\'Éditeur'}
                 </button>
               </div>
             </form>

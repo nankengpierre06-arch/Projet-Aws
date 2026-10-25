@@ -96,6 +96,7 @@ export default function App() {
   const [ownedDocs, setOwnedDocs] = useState(DEFAULT_OWNED_DOCS);
   const [sharedDocs, setSharedDocs] = useState(DEFAULT_SHARED_DOCS);
   const [notifications, setNotifications] = useState(DEFAULT_NOTIFS);
+  const [publications, setPublications] = useState([]);
   const [downloadLinkId, setDownloadLinkId] = useState('revue-edition-42');
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
   const [dailyQuota, setDailyQuota] = useState({ used: 0, limit: 10000, remaining: 10000 });
@@ -106,7 +107,7 @@ export default function App() {
   const [showCreateLinkModal, setShowCreateLinkModal] = useState(false);
   const [showVersionsModal, setShowVersionsModal] = useState(false);
 
-  // Synchronisation des documents et notifications avec le backend
+  // Synchronisation des documents, notifications et publications avec le backend
   const loadUserDocuments = () => {
     if (!user || !user.email) return;
 
@@ -122,6 +123,13 @@ export default function App() {
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) setNotifications(data);
+      })
+      .catch(() => {});
+
+    fetch('/api/links')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) setPublications(data);
       })
       .catch(() => {});
   };
@@ -334,23 +342,12 @@ export default function App() {
               user={user}
               activeTab={writerTab}
               activeDocId={docId}
-              ownedDocs={ownedDocs}
-              sharedDocs={sharedDocs}
-              notifications={notifications}
+              activeDocTitle={ownedDocs.find(d => d.docId === docId)?.title || sharedDocs.find(d => d.docId === docId)?.title || docId}
+              ownedDocsCount={ownedDocs.length}
+              sharedDocsCount={sharedDocs.length}
+              unreadNotifsCount={notifications.filter(n => !n.read).length}
+              linksCount={publications.length}
               onSelectTab={(tab) => setWriterTab(tab)}
-              onOpenDoc={handleOpenDoc}
-              onCreateDoc={handleCreateDoc}
-              onArchiveDoc={handleArchiveDoc}
-              onDeleteDoc={handleDeleteDoc}
-              onOpenCreateLink={(targetDocId) => {
-                if (targetDocId) setDocId(targetDocId);
-                setShowCreateLinkModal(true);
-              }}
-              onOpenVersions={(targetDocId) => {
-                if (targetDocId) setDocId(targetDocId);
-                setShowVersionsModal(true);
-              }}
-              onMarkNotifsRead={handleMarkNotifsRead}
               quota={dailyQuota}
             />
 
@@ -374,6 +371,7 @@ export default function App() {
                 ownedDocs={ownedDocs}
                 sharedDocs={sharedDocs}
                 notifications={notifications}
+                links={publications}
                 onOpenDoc={handleOpenDoc}
                 onCreateDoc={handleCreateDoc}
                 onArchiveDoc={handleArchiveDoc}
