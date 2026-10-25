@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Download, Clock, Calendar, Lock, CheckCircle, 
-  ArrowRight, Shield, BookOpen, Sparkles, AlertCircle, FileText
+  ArrowRight, Shield, BookOpen, Sparkles, AlertCircle, FileText,
+  Loader2, Check
 } from 'lucide-react';
 
 const DEFAULT_PUBLICATIONS = [
@@ -45,6 +46,94 @@ export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, o
   const [loading, setLoading] = useState(false);
   const [now, setNow] = useState(new Date());
   const [filter, setFilter] = useState('ALL'); // 'ALL' | 'OPEN' | 'UPCOMING'
+  const [downloadingId, setDownloadingId] = useState(null);
+  const [downloadFeedback, setDownloadFeedback] = useState({}); // linkId -> { type: 'SUCCESS' | 'ERROR' | 'INFO', message: string }
+
+  // Téléchargement direct et automatique du PDF sur l'appareil de l'utilisateur
+  const handleDirectDownload = async (pub) => {
+    if (downloadingId) return;
+    setDownloadingId(pub.linkId);
+    setDownloadFeedback(prev => ({
+      ...prev,
+      [pub.linkId]: { type: 'INFO', message: 'Attribution de votre exemplaire...' }
+    }));
+
+    try {
+      const res = await fetch(`/api/download/${encodeURIComponent(pub.linkId)}`);
+      const data = await res.json();
+
+      if (res.status === 410) {
+        setPublications(prev => prev.map(p => p.linkId === pub.linkId ? { ...p, places_restantes: 0 } : p));
+        setDownloadFeedback(prev => ({
+          ...prev,
+          [pub.linkId]: { type: 'ERROR', message: 'Tirage épuisé : le quota de 500 exemplaires a été atteint.' }
+        }));
+        return;
+      }
+
+      if (res.status === 403 || data.error === 'PARUTION_NOT_YET_OPEN') {
+        setDownloadFeedback(prev => ({
+          ...prev,
+          [pub.linkId]: { type: 'ERROR', message: data.message || 'Cette parution n\'est pas encore ouverte.' }
+        }));
+        return;
+      }
+
+      if (!res.ok || !data.token) {
+        setDownloadFeedback(prev => ({
+          ...prev,
+          [pub.linkId]: { type: 'ERROR', message: data.message || 'Impossible d\'obtenir l\'exemplaire.' }
+        }));
+        return;
+      }
+
+      // Admis ! Mettre à jour les exemplaires restants
+      if (typeof data.remaining === 'number') {
+        setPublications(prev => prev.map(p => p.linkId === pub.linkId ? { ...p, places_restantes: data.remaining } : p));
+      }
+
+      setDownloadFeedback(prev => ({
+        ...prev,
+        [pub.linkId]: { type: 'INFO', message: 'Téléchargement du fichier PDF en cours...' }
+      }));
+
+      // Déclencher le téléchargement automatique du fichier PDF sur l'appareil de l'utilisateur
+      const fileUrl = `/api/download/file?token=${encodeURIComponent(data.token)}`;
+      const safeTitle = (pub.title || 'Revue_Numerique')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_-]/g, '_');
+      const safeFilename = `${safeTitle}.pdf`;
+
+      const link = document.createElement('a');
+      link.href = fileUrl;
+      link.setAttribute('download', safeFilename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setDownloadFeedback(prev => ({
+        ...prev,
+        [pub.linkId]: { type: 'SUCCESS', message: '✓ Exemplaire PDF téléchargé sur votre appareil !' }
+      }));
+
+      setTimeout(() => {
+        setDownloadFeedback(prev => {
+          const next = { ...prev };
+          delete next[pub.linkId];
+          return next;
+        });
+      }, 5000);
+
+    } catch (err) {
+      setDownloadFeedback(prev => ({
+        ...prev,
+        [pub.linkId]: { type: 'ERROR', message: 'Erreur réseau lors du téléchargement.' }
+      }));
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   // 1. Horloge temps réel (rafraîchissement chaque seconde pour bascule automatique des boutons)
   useEffect(() => {
@@ -504,11 +593,12 @@ export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, o
                   ) : isOpen ? (
                     <div>
                       <button
-                        onClick={() => onGoDownload(pub.linkId)}
+                        onClick={() => handleDirectDownload(pub)}
+                        disabled={downloadingId === pub.linkId}
                         style={{
                           width: '100%',
                           padding: '12px 16px',
-                          backgroundColor: '#16a34a',
+                          backgroundColor: downloadingId === pub.linkId ? '#15803d' : '#16a34a',
                           color: '#ffffff',
                           border: 'none',
                           borderRadius: '8px',
@@ -519,15 +609,62 @@ export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, o
                           justifyContent: 'center',
                           gap: '8px',
                           boxShadow: '0 4px 12px rgba(22, 163, 74, 0.3)',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s ease'
+                          cursor: downloadingId === pub.linkId ? 'wait' : 'pointer',
+                          transition: 'all 0.2s ease',
+                          opacity: downloadingId === pub.linkId ? 0.85 : 1
                         }}
                       >
-                        <Download size={17} /> Obtenir mon Exemplaire ({pub.places_restantes} restants)
+                        {downloadingId === pub.linkId ? (
+                          <>
+                            <Loader2 size={17} style={{ animation: 'spin 1s linear infinite' }} />
+                            Téléchargement du PDF en cours...
+                          </>
+                        ) : (
+                          <>
+                            <Download size={17} /> Télécharger le PDF ({pub.places_restantes} restants)
+                          </>
+                        )}
                       </button>
-                      <p style={{ fontSize: '11px', color: '#16a34a', textAlign: 'center', marginTop: '6px', fontWeight: '500' }}>
-                        ✓ Tirage ouvert • Téléchargement immédiat
-                      </p>
+
+                      {downloadFeedback[pub.linkId] ? (
+                        <div style={{
+                          marginTop: '8px',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          textAlign: 'center',
+                          backgroundColor: downloadFeedback[pub.linkId].type === 'SUCCESS' ? '#dcfce7' : downloadFeedback[pub.linkId].type === 'ERROR' ? '#fee2e2' : '#eff6ff',
+                          color: downloadFeedback[pub.linkId].type === 'SUCCESS' ? '#15803d' : downloadFeedback[pub.linkId].type === 'ERROR' ? '#dc2626' : '#1d4ed8',
+                          border: '1px solid',
+                          borderColor: downloadFeedback[pub.linkId].type === 'SUCCESS' ? '#bbf7d0' : downloadFeedback[pub.linkId].type === 'ERROR' ? '#fecaca' : '#bfdbfe'
+                        }}>
+                          {downloadFeedback[pub.linkId].message}
+                        </div>
+                      ) : (
+                        <p style={{ fontSize: '11px', color: '#16a34a', textAlign: 'center', marginTop: '6px', fontWeight: '500' }}>
+                          ✓ Tirage ouvert • Téléchargement automatique sur votre appareil
+                        </p>
+                      )}
+
+                      <div style={{ textAlign: 'center', marginTop: '6px' }}>
+                        <button
+                          onClick={() => onGoDownload && onGoDownload(pub.linkId)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#94a3b8',
+                            fontSize: '11px',
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            padding: '2px 4px'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#64748b'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}
+                        >
+                          Voir la page dédiée du tirage #{pub.linkId}
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <div>
