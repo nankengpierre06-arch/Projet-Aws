@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, Plus, Users, Bell, Globe, Link2, 
-  CheckCircle, Clock, ChevronRight, X, Sparkles, Folder, Share2
+  CheckCircle, Clock, ChevronRight, X, Sparkles, Folder, Share2, History
 } from 'lucide-react';
 
 export default function WriterSidebar({ 
@@ -9,6 +9,7 @@ export default function WriterSidebar({
   activeDocId, 
   onSelectDoc, 
   onOpenCreateLink,
+  onOpenVersions,
   refreshTrigger 
 }) {
   const [ownedDocs, setOwnedDocs] = useState([]);
@@ -239,6 +240,31 @@ export default function WriterSidebar({
           <Globe size={14} color="#6b21a8" /> Créer un Lien de Parution
         </button>
 
+        {/* Bouton pour accéder aux versions si l'utilisateur est propriétaire du document actif */}
+        {ownedDocs.some(d => d.docId === activeDocId) && (
+          <button
+            onClick={() => onOpenVersions && onOpenVersions(activeDocId)}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              backgroundColor: '#faf5ff',
+              color: '#6b21a8',
+              border: '1px solid #d8b4fe',
+              borderRadius: '6px',
+              fontSize: '12px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              marginTop: '6px'
+            }}
+          >
+            <History size={14} color="#6b21a8" /> Versions & Instantanés (T1)
+          </button>
+        )}
+
         {/* Formulaire Modal/Inline d'ajout de document */}
         {showNewDocInput && (
           <form onSubmit={handleCreateDocument} style={{
@@ -351,25 +377,49 @@ export default function WriterSidebar({
                           </span>
                         </div>
 
-                        {/* Raccourci génération de lien de parution */}
-                        <button
-                          title="Créer un lien de parution pour ce document"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenCreateLink(doc.docId);
-                          }}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: '4px',
-                            color: isActive ? '#6b21a8' : '#94a3b8',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center'
-                          }}
-                        >
-                          <Link2 size={14} />
-                        </button>
+                        {/* Actions pour le propriétaire : Versions + Lien de parution */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                          <button
+                            title="Historique des versions et restauration (T1)"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSelectDoc(doc.docId);
+                              if (onOpenVersions) onOpenVersions(doc.docId);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: '4px',
+                              color: isActive ? '#6b21a8' : '#64748b',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              borderRadius: '4px'
+                            }}
+                          >
+                            <History size={14} />
+                          </button>
+
+                          <button
+                            title="Créer un lien de parution pour ce document"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenCreateLink(doc.docId);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: '4px',
+                              color: isActive ? '#6b21a8' : '#94a3b8',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              borderRadius: '4px'
+                            }}
+                          >
+                            <Link2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     );
                   })
@@ -508,3 +558,4 @@ export default function WriterSidebar({
     </aside>
   );
 }
+

@@ -145,6 +145,10 @@ export default function App() {
                 if (targetDocId) setDocId(targetDocId);
                 setShowCreateLinkModal(true);
               }}
+              onOpenVersions={(targetDocId) => {
+                if (targetDocId) setDocId(targetDocId);
+                setShowVersionsModal(true);
+              }}
               refreshTrigger={sidebarRefreshKey}
             />
             <div style={{ flex: 1, height: '100%', overflow: 'hidden' }}>
