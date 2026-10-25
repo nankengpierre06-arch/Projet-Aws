@@ -27,6 +27,7 @@ export default function App() {
   const [docId, setDocId] = useState('revue-principale');
   const [downloadLinkId, setDownloadLinkId] = useState('revue-edition-42');
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
+  const [dailyQuota, setDailyQuota] = useState({ used: 0, limit: 10000, remaining: 10000 });
 
   // 4. Modales
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -150,6 +151,7 @@ export default function App() {
                 setShowVersionsModal(true);
               }}
               refreshTrigger={sidebarRefreshKey}
+              quota={dailyQuota}
             />
             <div style={{ flex: 1, height: '100%', overflow: 'hidden' }}>
               <Editor
@@ -158,6 +160,7 @@ export default function App() {
                 onOpenShare={() => setShowShareModal(true)}
                 onOpenCreateLink={() => setShowCreateLinkModal(true)}
                 onOpenVersions={() => setShowVersionsModal(true)}
+                onQuotaUpdate={setDailyQuota}
               />
             </div>
           </div>

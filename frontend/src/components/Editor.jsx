@@ -5,68 +5,137 @@ import { QuillBinding } from 'y-quill';
 import { WebsocketProvider } from 'y-websocket';
 import { 
   Users, Share2, Download, History, ShieldAlert, CheckCircle, 
-  Clock, RotateCcw, AlertTriangle, FileText, UserPlus
+  Clock, AlertTriangle, FileText, UserPlus, Sparkles, Check
 } from 'lucide-react';
 
-const COLORS = ['#663399', '#2563eb', '#16a34a', '#d97706', '#dc2626', '#db2777', '#0891b2'];
+const COLORS = ['#7c3aed', '#2563eb', '#16a34a', '#d97706', '#dc2626', '#db2777', '#0891b2', '#4f46e5'];
 
-export default function Editor({ user, docId, onOpenShare, onOpenCreateLink, onOpenVersions }) {
+const DOC_METADATA_FALLBACK = {
+  'revue-principale': {
+    title: 'Revue Annuelle (Édition Collective)',
+    category: 'ÉDITION COLLECTIVE OFFICIELLE',
+    subtitle: 'Revue numérique préparée collectivement par les rédacteurs de l\'association étudiante.'
+  },
+  'doc-alice-campus': {
+    title: 'Enquête Campus : Logement & Mobilité Étudiante',
+    category: 'ENQUÊTE & INVESTIGATION',
+    subtitle: 'Étude d\'impact et témoignages sur les conditions de vie étudiante.'
+  },
+  'doc-revue-42': {
+    title: 'Revue Étudiante n°42 — Innovations & Vie Universitaire',
+    category: 'PARUTION OFFICIELLE',
+    subtitle: 'Numéro spécial consacré aux initiatives de recherche et aux projets associatifs.'
+  },
+  'doc-bob-culture': {
+    title: 'Chronique Culturelle & Festivals Universitaires',
+    category: 'CHRONIQUE & CULTURE',
+    subtitle: 'Panorama des événements artistiques, du théâtre et de la création musicale sur le campus.'
+  }
+};
+
+export default function Editor({ 
+  user, 
+  docId, 
+  onOpenShare, 
+  onOpenCreateLink, 
+  onOpenVersions,
+  onQuotaUpdate
+}) {
   const editorRef = useRef(null);
   const quillInstance = useRef(null);
   const providerRef = useRef(null);
   const ydocRef = useRef(null);
+  const bindingRef = useRef(null);
+
+  const [docMeta, setDocMeta] = useState(() => {
+    return DOC_METADATA_FALLBACK[docId] || {
+      title: `Document (${docId})`,
+      category: 'REVUE UNIVERSITAIRE',
+      subtitle: 'Espace de rédaction collaborative pour la revue étudiante.'
+    };
+  });
 
   const [activeUsers, setActiveUsers] = useState([]);
   const [quota, setQuota] = useState({ used: 0, limit: 10000, remaining: 10000 });
+  const [wordCount, setWordCount] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
   const [isBlocked, setIsBlocked] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
   const [wsConnected, setWsConnected] = useState(false);
 
+  // Charger les métadonnées du document actuel
+  useEffect(() => {
+    const fallback = DOC_METADATA_FALLBACK[docId] || {
+      title: `Document ${docId}`,
+      category: 'REVUE COLLABORATIVE',
+      subtitle: 'Espace de rédaction partagé de l\'association étudiante.'
+    };
+    setDocMeta(fallback);
+
+    fetch(`/api/documents/${encodeURIComponent(docId)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.title) {
+          setDocMeta(prev => ({
+            ...prev,
+            title: data.title,
+            category: data.ownerEmail === user?.email ? 'MON DOCUMENT (PROPRIÉTAIRE)' : 'DOCUMENT PARTAGÉ'
+          }));
+        }
+      })
+      .catch(() => {});
+  }, [docId, user?.email]);
+
+  // Initialisation de Quill et du relais WebSocket Yjs
   useEffect(() => {
     const container = editorRef.current;
     if (!container) return;
 
-    // 1. Éviter le dédoublement de la barre d'outils en React Strict Mode
-    if (container.parentElement) {
-      const prevToolbars = container.parentElement.querySelectorAll('.ql-toolbar');
-      prevToolbars.forEach(tb => tb.remove());
+    // Nettoyage préalable pour éviter toute duplication
+    if (quillInstance.current) {
+      try {
+        if (bindingRef.current) bindingRef.current.destroy();
+        if (providerRef.current) providerRef.current.destroy();
+        if (ydocRef.current) ydocRef.current.destroy();
+      } catch {}
     }
     container.innerHTML = '';
 
-    // 2. Initialiser Quill
+    // 1. Initialiser Quill avec la barre d'outils dédiée
     const quill = new Quill(container, {
       theme: 'snow',
-      placeholder: 'Commencez à rédiger la revue ici...',
+      placeholder: 'Commencez à rédiger votre article pour la revue universitaire...',
       modules: {
-        toolbar: [
-          [{ header: [1, 2, 3, false] }],
-          ['bold', 'italic', 'underline', 'strike'],
-          [{ list: 'ordered' }, { list: 'bullet' }],
-          ['blockquote', 'code-block'],
-          ['clean']
-        ]
+        toolbar: '#quill-toolbar-container'
       }
     });
     quillInstance.current = quill;
 
-    // Mise à jour locale du décompte de caractères
-    quill.on('text-change', () => {
+    // Décompte de caractères et mots en direct
+    const updateStats = () => {
       const text = quill.getText();
       const currentLen = Math.max(0, text.length - 1);
-      setQuota(prev => ({
-        ...prev,
-        used: currentLen,
-        remaining: Math.max(0, prev.limit - currentLen)
-      }));
-    });
+      const words = text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
+      setWordCount(words);
+      setQuota(prev => {
+        const next = {
+          ...prev,
+          used: currentLen,
+          remaining: Math.max(0, prev.limit - currentLen)
+        };
+        if (onQuotaUpdate) onQuotaUpdate(next);
+        return next;
+      });
+    };
 
-    // 3. Initialiser Yjs
+    quill.on('text-change', updateStats);
+
+    // 2. Initialiser Yjs
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
     const ytext = ydoc.getText('content');
 
-    // Déterminer l'URL WebSocket
+    // Déterminer l'URL WebSocket du relais Yjs
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsHost = `${wsProtocol}//${window.location.hostname}:1234`;
 
@@ -87,7 +156,7 @@ export default function Editor({ user, docId, onOpenShare, onOpenCreateLink, onO
       setWsConnected(event.status === 'connected');
     });
 
-    // 4. Configurer l'Awareness (curseurs et présences)
+    // 3. Configurer l'Awareness (Curseurs & Présences)
     const userColor = COLORS[Math.floor(Math.random() * COLORS.length)];
     provider.awareness.setLocalStateField('user', {
       name: user.name,
@@ -101,19 +170,22 @@ export default function Editor({ user, docId, onOpenShare, onOpenCreateLink, onO
       setActiveUsers(users);
     });
 
-    // 5. Lier Quill et Yjs
+    // 4. Lier Quill et Yjs
     const binding = new QuillBinding(ytext, quill, provider.awareness);
+    bindingRef.current = binding;
 
-    // 6. Écouter les messages personnalisés du serveur (Quotas et Blocages)
+    // 5. Écouter les messages du serveur (Quotas et Blocages C4)
     const handleWsMessage = (event) => {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === 'QUOTA_STATUS' || msg.type === 'QUOTA_UPDATE') {
-          setQuota({
+          const nextQuota = {
             used: msg.used,
             limit: msg.limit || 10000,
             remaining: msg.remaining
-          });
+          };
+          setQuota(nextQuota);
+          if (onQuotaUpdate) onQuotaUpdate(nextQuota);
           setErrorMsg('');
         } else if (msg.type === 'ERROR_QUOTA_EXCEEDED') {
           setErrorMsg(msg.message);
@@ -137,87 +209,143 @@ export default function Editor({ user, docId, onOpenShare, onOpenCreateLink, onO
         provider.destroy();
         ydoc.destroy();
       } catch {}
-      if (container && container.parentElement) {
-        const toolbars = container.parentElement.querySelectorAll('.ql-toolbar');
-        toolbars.forEach(tb => tb.remove());
-      }
     };
   }, [docId, user]);
 
   const quotaPercent = Math.min(100, Math.round((quota.used / quota.limit) * 100));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Barre d'outils supérieure */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '12px 20px',
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#f8fafc', overflow: 'hidden' }}>
+      {/* 1. Barre Supérieure de l'Éditeur */}
+      <header style={{
+        height: '60px',
         backgroundColor: '#ffffff',
-        borderBottom: '1px solid var(--border)',
-        flexWrap: 'wrap',
-        gap: '12px'
+        borderBottom: '1px solid #e2e8f0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 24px',
+        zIndex: 20,
+        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)'
       }}>
-        {/* Titre et collaborateurs présents */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <FileText size={20} color="var(--primary)" />
-            <span style={{ fontWeight: '600', fontSize: '15px' }}>Revue Annuelle ({docId})</span>
+        {/* Titre et statut de synchronisation */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
+          <div style={{
+            width: '34px',
+            height: '34px',
+            borderRadius: '8px',
+            backgroundColor: '#f5f3ff',
+            color: '#7c3aed',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <FileText size={18} />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-muted)' }}>
-            <Users size={16} />
-            <span><b>{activeUsers.length}</b> rédacteur(s) en ligne :</span>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              {activeUsers.slice(0, 5).map((u, i) => (
-                <span
-                  key={i}
-                  title={`${u.name} (${u.email})`}
-                  style={{
-                    backgroundColor: u.color || '#663399',
-                    color: '#fff',
-                    borderRadius: '50%',
-                    width: '24px',
-                    height: '24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '11px',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  {u.name.charAt(0).toUpperCase()}
-                </span>
-              ))}
-              {activeUsers.length > 5 && <span>+{activeUsers.length - 5}</span>}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{
+                fontSize: '14.5px',
+                fontWeight: '700',
+                color: '#0f172a',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: '320px'
+              }}>
+                {docMeta.title}
+              </span>
+              <span style={{
+                fontSize: '10px',
+                fontWeight: '700',
+                color: '#6b21a8',
+                backgroundColor: '#f3e8ff',
+                padding: '1px 6px',
+                borderRadius: '4px',
+                flexShrink: 0
+              }}>
+                #{docId}
+              </span>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '2px' }}>
+              {/* Badge Synchronisé Yjs */}
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                fontSize: '11px',
+                fontWeight: '600',
+                color: wsConnected ? '#15803d' : '#b45309',
+                backgroundColor: wsConnected ? '#dcfce7' : '#fef3c7',
+                padding: '1px 7px',
+                borderRadius: '10px'
+              }}>
+                <span style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  backgroundColor: wsConnected ? '#16a34a' : '#f59e0b',
+                  animation: wsConnected ? 'none' : 'pulse 1.5s infinite'
+                }} />
+                {wsConnected ? 'Synchronisé (Temps Réel)' : 'En attente serveur ws:1234'}
+              </span>
+
+              {/* Rédacteurs en direct */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#64748b' }}>
+                <Users size={12} />
+                <span>{activeUsers.length} en ligne</span>
+                <div style={{ display: 'flex', marginLeft: '4px' }}>
+                  {activeUsers.slice(0, 4).map((u, i) => (
+                    <span
+                      key={i}
+                      title={`${u.name} (${u.email})`}
+                      style={{
+                        backgroundColor: u.color || '#7c3aed',
+                        color: '#fff',
+                        borderRadius: '50%',
+                        width: '20px',
+                        height: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '10px',
+                        fontWeight: 'bold',
+                        border: '2px solid #ffffff',
+                        marginLeft: i > 0 ? '-6px' : '0'
+                      }}
+                    >
+                      {u.name.charAt(0).toUpperCase()}
+                    </span>
+                  ))}
+                  {activeUsers.length > 4 && (
+                    <span style={{
+                      backgroundColor: '#e2e8f0',
+                      color: '#475569',
+                      borderRadius: '50%',
+                      width: '20px',
+                      height: '20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '9px',
+                      fontWeight: 'bold',
+                      border: '2px solid #ffffff',
+                      marginLeft: '-6px'
+                    }}>
+                      +{activeUsers.length - 4}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-
-          {/* Indicateur de statut WebSocket */}
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '5px',
-            fontSize: '11px',
-            fontWeight: '600',
-            color: wsConnected ? '#16a34a' : '#d97706',
-            backgroundColor: wsConnected ? '#dcfce7' : '#fef3c7',
-            padding: '3px 9px',
-            borderRadius: '12px'
-          }}>
-            <span style={{
-              width: '6px',
-              height: '6px',
-              borderRadius: '50%',
-              backgroundColor: wsConnected ? '#16a34a' : '#d97706'
-            }} />
-            {wsConnected ? 'Synchronisé (Temps Réel)' : 'En attente serveur (ws:1234)'}
-          </span>
         </div>
 
-        {/* Actions : Inviter des collaborateurs, Versions, Lien public */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        {/* Boutons d'Action Métier */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             onClick={onOpenShare}
             style={{
@@ -225,17 +353,20 @@ export default function Editor({ user, docId, onOpenShare, onOpenCreateLink, onO
               alignItems: 'center',
               gap: '6px',
               padding: '7px 14px',
-              backgroundColor: '#6b21a8',
+              backgroundColor: '#7c3aed',
               color: '#ffffff',
               border: 'none',
-              borderRadius: '6px',
-              fontSize: '13px',
+              borderRadius: '8px',
+              fontSize: '12.5px',
               fontWeight: '600',
               cursor: 'pointer',
-              boxShadow: '0 2px 6px rgba(107, 33, 168, 0.25)'
+              boxShadow: '0 2px 6px rgba(124, 58, 237, 0.25)',
+              transition: 'background-color 0.15s ease'
             }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6d28d9'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#7c3aed'}
           >
-            <UserPlus size={16} /> Inviter des Collaborateurs
+            <UserPlus size={15} /> Inviter des Collaborateurs
           </button>
 
           <button
@@ -244,12 +375,18 @@ export default function Editor({ user, docId, onOpenShare, onOpenCreateLink, onO
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '6px 12px',
-              backgroundColor: '#f1f5f9',
+              padding: '7px 12px',
+              backgroundColor: '#ffffff',
               border: '1px solid #cbd5e1',
+              borderRadius: '8px',
               color: '#334155',
-              fontSize: '13px'
+              fontSize: '12.5px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'background-color 0.15s ease'
             }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
           >
             <History size={15} /> Versions (C3)
           </button>
@@ -260,82 +397,174 @@ export default function Editor({ user, docId, onOpenShare, onOpenCreateLink, onO
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '6px 14px',
-              backgroundColor: 'var(--primary)',
+              padding: '7px 14px',
+              backgroundColor: '#4338ca',
               color: '#ffffff',
               border: 'none',
-              fontSize: '13px',
-              fontWeight: '600'
+              borderRadius: '8px',
+              fontSize: '12.5px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              boxShadow: '0 2px 6px rgba(67, 56, 202, 0.25)',
+              transition: 'background-color 0.15s ease'
             }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3730a3'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#4338ca'}
           >
             <Download size={15} /> Publier le Lien (500 ex.)
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Jauge de Quota Journalier (Contrainte C4) */}
-      <div style={{
-        padding: '8px 20px',
-        backgroundColor: quotaPercent > 90 ? 'var(--danger-bg)' : '#ffffff',
-        borderBottom: '1px solid var(--border)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        fontSize: '12px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span><b>Crédit d'écriture quotidien (C4) :</b> {quota.used.toLocaleString()} / {quota.limit.toLocaleString()} caractères</span>
-          <div style={{
-            width: '180px',
-            height: '8px',
-            backgroundColor: '#e2e8f0',
-            borderRadius: '4px',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              width: `${quotaPercent}%`,
-              height: '100%',
-              backgroundColor: quotaPercent > 90 ? 'var(--danger)' : quotaPercent > 70 ? 'var(--warning)' : 'var(--primary)'
-            }} />
-          </div>
-          <span>({quota.remaining.toLocaleString()} car. restants aujourd'hui)</span>
+      {/* 2. Barre d'outils Quill Moderne (Sticky Dock) */}
+      <div className="quill-toolbar-dock">
+        <div id="quill-toolbar-container" style={{ maxWidth: '880px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span className="ql-formats">
+            <select className="ql-header" defaultValue="">
+              <option value="1">Titre 1</option>
+              <option value="2">Titre 2</option>
+              <option value="3">Titre 3</option>
+              <option value="">Normal</option>
+            </select>
+          </span>
+
+          <span className="ql-formats">
+            <button className="ql-bold" title="Gras" />
+            <button className="ql-italic" title="Italique" />
+            <button className="ql-underline" title="Souligné" />
+            <button className="ql-strike" title="Barré" />
+          </span>
+
+          <span className="ql-formats">
+            <button className="ql-list" value="ordered" title="Liste numérotée" />
+            <button className="ql-list" value="bullet" title="Liste à puces" />
+          </span>
+
+          <span className="ql-formats">
+            <button className="ql-blockquote" title="Citation" />
+            <button className="ql-code-block" title="Bloc de code" />
+          </span>
+
+          <span className="ql-formats">
+            <button className="ql-clean" title="Effacer le formatage" />
+          </span>
         </div>
-
-        {errorMsg && (
-          <span style={{ color: 'var(--danger)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <AlertTriangle size={14} /> {errorMsg}
-          </span>
-        )}
-
-        {statusMsg && (
-          <span style={{ color: 'var(--success)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <CheckCircle size={14} /> {statusMsg}
-          </span>
-        )}
       </div>
 
-      {/* Alerte si bloqué pour acharnement */}
+      {/* Alerte si bloqué pour acharnement (Contrainte C4) */}
       {isBlocked && (
         <div style={{
-          padding: '12px 20px',
+          padding: '10px 24px',
           backgroundColor: '#991b1b',
           color: '#ffffff',
-          fontWeight: 'bold',
+          fontWeight: '600',
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
           fontSize: '13px'
         }}>
           <ShieldAlert size={18} />
-          Vous êtes temporairement bloqué pour acharnement au-delà de votre quota quotidien. Vos modifications sont rejetées.
+          Vous avez dépassé votre quota d'écriture quotidien (10 000 caractères). Vos frappes sont temporairement rejetées par le serveur pour préserver l'équité.
         </div>
       )}
 
-      {/* Surface de saisie Quill */}
-      <div style={{ flex: 1, backgroundColor: '#ffffff', overflowY: 'auto' }}>
-        <div ref={editorRef} style={{ minHeight: '100%', border: 'none', fontSize: '15px' }} />
+      {/* Notification de restauration de version */}
+      {statusMsg && (
+        <div style={{
+          padding: '8px 24px',
+          backgroundColor: '#dcfce7',
+          color: '#15803d',
+          fontWeight: '600',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          fontSize: '12.5px'
+        }}>
+          <CheckCircle size={16} /> {statusMsg}
+        </div>
+      )}
+
+      {/* 3. Surface de Saisie Centrée (Feuille de Papier Moderne Style Notion / Google Docs) */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px' }}>
+        <article className="editor-paper-sheet">
+          {/* En-tête décoratif de publication de la revue */}
+          <div className="editorial-badge">
+            <Sparkles size={12} />
+            {docMeta.category}
+          </div>
+
+          <h1 className="editorial-title">{docMeta.title}</h1>
+          
+          <div className="editorial-meta">
+            <span>✍️ Rédacteur actif : <b>{user.name}</b></span>
+            <span>•</span>
+            <span>🛡️ CRDT Yjs temps réel (0 conflit)</span>
+            <span>•</span>
+            <span>🔒 Tirage certifié 500 ex. (C1)</span>
+          </div>
+
+          <div className="editorial-divider" />
+
+          {/* Conteneur Quill directement intégré dans la feuille de papier */}
+          <div ref={editorRef} />
+        </article>
       </div>
+
+      {/* 4. Barre d'État Inférieure (Footer Métier Style IDE / Google Docs) */}
+      <footer style={{
+        height: '36px',
+        backgroundColor: '#ffffff',
+        borderTop: '1px solid #e2e8f0',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 24px',
+        fontSize: '12px',
+        color: '#64748b',
+        zIndex: 20
+      }}>
+        {/* Statistiques textuelles */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span><b>{wordCount}</b> mots</span>
+          <span>•</span>
+          <span><b>{quota.used.toLocaleString()}</b> caractères rédigés</span>
+          {errorMsg && (
+            <span style={{ color: '#dc2626', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '4px', marginLeft: '10px' }}>
+              <AlertTriangle size={13} /> {errorMsg}
+            </span>
+          )}
+        </div>
+
+        {/* Jauge Quota Quotidien (Contrainte C4) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span style={{ fontSize: '11px', fontWeight: '600', color: '#475569' }}>
+            Crédit d'écriture (C4) : <b>{quota.used.toLocaleString()}</b> / {quota.limit.toLocaleString()}
+          </span>
+          <div style={{
+            width: '80px',
+            height: '6px',
+            backgroundColor: '#e2e8f0',
+            borderRadius: '3px',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              width: `${quotaPercent}%`,
+              height: '100%',
+              backgroundColor: quotaPercent >= 90 ? '#ef4444' : (quotaPercent >= 70 ? '#f59e0b' : '#7c3aed'),
+              transition: 'width 0.2s ease'
+            }} />
+          </div>
+          <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+            ({quota.remaining.toLocaleString()} car. restants)
+          </span>
+        </div>
+
+        {/* Protection et garantie architecture */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#64748b' }}>
+          <Check size={13} color="#16a34a" />
+          <span>Sauvegarde continue & Snapshots S3 (C2/C3)</span>
+        </div>
+      </footer>
     </div>
   );
 }
-
