@@ -1,0 +1,558 @@
+\chapter{Analyse et conception}
+
+Ce chapitre présente la modélisation du système au moyen de diagrammes UML : vue fonctionnelle (cas d'utilisation), vue structurelle (classes), vue dynamique (activités et états-transitions). Les diagrammes eux-mêmes sont fournis dans les annexes graphiques ; ce chapitre en donne les descriptions textuelles et les commentaires.
+
+\section{Diagramme de cas d'utilisation}
+
+Le diagramme de cas d'utilisation du système met en relation trois acteurs (rédacteur, visiteur téléchargeur, administrateur) et les cas d'utilisation suivants :
+
+\begin{itemize}
+    \item Pour le rédacteur : s'identifier, créer un document, inviter des collaborateurs, modifier un document, consulter les versions, restaurer une version, créer un lien de téléchargement.
+    \item Pour le visiteur : télécharger un journal, consulter l'état de la demande de téléchargement.
+    \item Pour l'administrateur : consulter les documents ouverts, consulter les liens de téléchargement, consulter les rédacteurs bloqués.
+\end{itemize}
+
+\begin{infobox}
+Le cas \textit{Créer un lien de téléchargement} inclut la consultation des versions pour garantir qu'un état cohérent est référencé. Le cas \textit{Télécharger un journal} inclut la consultation de l'état de la demande pour informer le visiteur. Le cas \textit{Restaurer une version} étend \textit{Consulter les versions}.
+\end{infobox}
+
+\subsection{Descriptions textuelles des cas d'utilisation}
+
+Les descriptions ci-dessous reprennent, pour chaque cas d'utilisation identifié, l'acteur principal, les préconditions, le scénario nominal, les scénarios alternatifs ou exceptions, et les postconditions.
+
+\begin{description}[leftmargin=0pt, style=nextline, font=\normalfont\bfseries\color{violetprincipal}]
+
+    \item[UC01 --- S'identifier]
+
+    \textbf{Acteur principal :} Rédacteur.
+
+    \textbf{Objectif :} Permettre à un rédacteur de fournir son identité afin d'utiliser les fonctionnalités de l'application.
+
+    \textbf{Préconditions :} L'application est accessible.
+
+    \textbf{Scénario nominal :}
+    \begin{enumerate}
+        \item Le rédacteur accède à l'application.
+        \item Le système demande son nom et son adresse e-mail.
+        \item Le rédacteur renseigne son nom et son adresse e-mail.
+        \item Le système vérifie la validité des informations fournies.
+        \item Le système associe l'identité fournie au rédacteur concerné, selon le mécanisme d'identification retenu.
+        \item Le système permet au rédacteur d'accéder aux fonctionnalités autorisées.
+    \end{enumerate}
+
+    \textbf{Scénarios alternatifs et exceptions :}
+    \begin{itemize}
+        \item \textbf{A1} : Le nom ou l'adresse e-mail est manquant. Le système demande de compléter les informations.
+        \item \textbf{A2} : L'adresse e-mail est invalide. Le système demande une correction.
+        \item \textbf{A3} : Une erreur survient pendant l'identification. Le système informe le rédacteur.
+    \end{itemize}
+
+    \textbf{Postconditions :} L'identité déclarée du rédacteur est disponible ; le rédacteur peut accéder aux fonctionnalités correspondant à ses droits.
+
+    \textit{Remarque :} Le sujet précise qu'il n'y a pas de véritables comptes rédacteurs. Ce cas décrit donc la fourniture et la reconnaissance de l'identité déclarée, et non une authentification par mot de passe.
+
+    \item[UC02 --- Créer un document]
+
+    \textbf{Acteur principal :} Rédacteur.
+
+    \textbf{Objectif :} Permettre à un rédacteur de créer un nouveau document textuel dans l'application.
+
+    \textbf{Préconditions :}
+    \begin{itemize}
+        \item Le rédacteur a renseigné son nom et son adresse e-mail.
+        \item Le rédacteur n'est pas temporairement bloqué.
+    \end{itemize}
+
+    \textbf{Scénario nominal :}
+    \begin{enumerate}
+        \item Le rédacteur demande la création d'un document.
+        \item Le système vérifie que le rédacteur peut effectuer cette opération.
+        \item Le système vérifie que le rédacteur n'est pas bloqué.
+        \item Le système crée un nouveau document vide.
+        \item Le système associe le document à son créateur.
+        \item Le système initialise les informations du document.
+        \item Le système affiche le document dans l'éditeur.
+        \item Le rédacteur peut commencer à écrire.
+    \end{enumerate}
+
+    \textbf{Scénarios alternatifs et exceptions :}
+    \begin{itemize}
+        \item \textbf{A1} : Le rédacteur est temporairement bloqué. Le système refuse la création si cette opération est interdite aux rédacteurs bloqués.
+        \item \textbf{A2} : Une erreur survient pendant la création. Le système informe le rédacteur de l'échec.
+    \end{itemize}
+
+    \textbf{Postconditions :} Le document est créé et associé à son créateur ; il est disponible pour les opérations autorisées.
+
+    \item[UC03 --- Inviter des collaborateurs]
+
+    \textbf{Acteur principal :} Rédacteur.
+
+    \textbf{Objectif :} Permettre au propriétaire d'un document de donner accès à d'autres rédacteurs afin qu'ils puissent collaborer.
+
+    \textbf{Préconditions :}
+    \begin{itemize}
+        \item Le document existe.
+        \item Le rédacteur est le propriétaire du document.
+        \item Le rédacteur n'est pas bloqué, si le blocage interdit cette opération.
+    \end{itemize}
+
+    \textbf{Scénario nominal :}
+    \begin{enumerate}
+        \item Le rédacteur ouvre le document concerné.
+        \item Le rédacteur sélectionne la fonctionnalité de partage.
+        \item Le système vérifie les droits du rédacteur.
+        \item Le rédacteur renseigne les informations nécessaires pour identifier le collaborateur, notamment son adresse e-mail.
+        \item Le système vérifie les informations fournies.
+        \item Le système enregistre l'accès du collaborateur au document.
+        \item Le système confirme le partage au rédacteur.
+    \end{enumerate}
+
+    \textbf{Scénarios alternatifs et exceptions :}
+    \begin{itemize}
+        \item \textbf{A1} : Le rédacteur n'est pas propriétaire du document. Le système refuse l'opération.
+        \item \textbf{A2} : Les informations du collaborateur sont invalides. Le système demande leur correction.
+        \item \textbf{A3} : Le collaborateur possède déjà un accès. Le système informe le rédacteur.
+        \item \textbf{A4} : Une erreur survient pendant le partage. Le système signale l'échec.
+    \end{itemize}
+
+    \textbf{Postconditions :} Le collaborateur dispose d'un accès au document conformément aux droits définis ; le système conserve les informations nécessaires à la gestion du partage.
+
+    \item[UC04 --- Modifier un document]
+
+    \textbf{Acteur principal :} Rédacteur.
+
+    \textbf{Acteurs secondaires :} Autres rédacteurs collaborateurs.
+
+    \textbf{Objectif :} Permettre à un rédacteur autorisé de modifier un document, éventuellement en collaboration avec d'autres rédacteurs.
+
+    \textbf{Préconditions :}
+    \begin{itemize}
+        \item Le rédacteur est identifié.
+        \item Le document existe.
+        \item Le rédacteur est propriétaire du document ou dispose d'un accès collaborateur.
+        \item Le rédacteur n'est pas bloqué.
+    \end{itemize}
+
+    \textbf{Scénario nominal :}
+    \begin{enumerate}
+        \item Le rédacteur ouvre le document.
+        \item Le système vérifie ses droits d'accès.
+        \item Le système vérifie que le rédacteur peut écrire.
+        \item Le système vérifie que son crédit d'écriture est disponible.
+        \item Le système affiche le contenu actuel du document.
+        \item Le système indique les collaborateurs présents et leurs positions d'écriture.
+        \item Le rédacteur saisit ou modifie du texte.
+        \item Le système contrôle la quantité de caractères que le rédacteur peut encore écrire.
+        \item Le système accepte les modifications respectant les règles de crédit.
+        \item Le système applique les modifications sans perdre celles des autres collaborateurs.
+        \item Le système propage les modifications aux collaborateurs en quasi-temps réel.
+        \item Le système met à jour le crédit d'écriture du rédacteur.
+        \item Le système conserve les modifications acceptées et l'historique nécessaire.
+    \end{enumerate}
+
+    \textbf{Scénarios alternatifs et exceptions :}
+    \begin{itemize}
+        \item \textbf{A1} : Le rédacteur ne possède pas les droits nécessaires. Le système refuse l'accès en écriture.
+        \item \textbf{A2} : Le rédacteur est bloqué. Le système lui interdit d'écrire.
+        \item \textbf{A3} : Le crédit est épuisé. Le système refuse les nouvelles écritures jusqu'à la recharge du crédit.
+        \item \textbf{A4} : La saisie dépasse le crédit restant. Le système limite ou refuse la partie excédentaire, selon la stratégie d'édition retenue.
+        \item \textbf{A5} : Plusieurs rédacteurs modifient simultanément le document. Le système coordonne les modifications afin de préserver toutes les modifications acceptées.
+        \item \textbf{A6} : Une tentative de contournement des limites est détectée. Le système applique le mécanisme de détection et de blocage temporaire prévu.
+        \item \textbf{A7} : Une erreur de connexion survient. Le système informe le rédacteur et applique la stratégie de récupération prévue.
+    \end{itemize}
+
+    \textbf{Postconditions :}
+    \begin{itemize}
+        \item Les modifications acceptées sont conservées.
+        \item Les crédits sont mis à jour sans dépassement.
+        \item Les collaborateurs convergent vers un même état du document.
+    \end{itemize}
+
+    \item[UC05 --- Consulter les versions]
+
+    \textbf{Acteur principal :} Rédacteur.
+
+    \textbf{Objectif :} Permettre à un rédacteur autorisé de consulter l'historique des versions d'un document.
+
+    \textbf{Préconditions :}
+    \begin{itemize}
+        \item Le document existe.
+        \item Le rédacteur dispose des droits nécessaires pour consulter le document.
+    \end{itemize}
+
+    \textbf{Scénario nominal :}
+    \begin{enumerate}
+        \item Le rédacteur sélectionne le document concerné.
+        \item Le rédacteur demande à consulter les versions.
+        \item Le système vérifie les droits d'accès du rédacteur.
+        \item Le système récupère l'historique des versions disponibles.
+        \item Le système affiche la liste des versions avec leurs informations pertinentes : numéro, date et auteur, selon les données conservées.
+        \item Le rédacteur sélectionne une version.
+        \item Le système affiche le contenu de la version sélectionnée.
+        \item Le rédacteur consulte la version.
+    \end{enumerate}
+
+    \textbf{Scénarios alternatifs et exceptions :}
+    \begin{itemize}
+        \item \textbf{A1} : Le document ne possède pas de version historique disponible. Le système informe le rédacteur.
+        \item \textbf{A2} : Le rédacteur ne dispose pas des droits nécessaires. Le système refuse l'accès.
+        \item \textbf{A3} : La version sélectionnée est indisponible. Le système informe le rédacteur.
+        \item \textbf{A4} : Une erreur survient lors du chargement de l'historique. Le système signale l'échec.
+    \end{itemize}
+
+    \textbf{Postconditions :} Le rédacteur a pu consulter les versions accessibles ; le contenu courant n'est pas modifié par la simple consultation.
+
+    \textit{Remarque :} La restauration d'une version constitue un cas d'utilisation distinct (UC06).
+
+    \item[UC06 --- Restaurer une version]
+
+    \textbf{Acteur principal :} Rédacteur.
+
+    \textbf{Objectif :} Permettre à un rédacteur autorisé de restaurer une version antérieure d'un document.
+
+    \textbf{Préconditions :}
+    \begin{itemize}
+        \item Le document existe.
+        \item Le rédacteur dispose des droits nécessaires.
+        \item Le document possède au moins une version antérieure consultable.
+    \end{itemize}
+
+    \textbf{Scénario nominal :}
+    \begin{enumerate}
+        \item Le rédacteur ouvre le document.
+        \item Le rédacteur demande la consultation de l'historique.
+        \item Le système affiche les versions disponibles.
+        \item Le rédacteur sélectionne une version.
+        \item Le système affiche le contenu de la version sélectionnée.
+        \item Le rédacteur demande la restauration.
+        \item Le système vérifie les droits du rédacteur.
+        \item Le système vérifie les conditions de restauration.
+        \item Le système restaure le contenu correspondant à la version sélectionnée.
+        \item Le système conserve l'historique et enregistre cette restauration.
+        \item Le système propage le nouvel état du document aux collaborateurs.
+    \end{enumerate}
+
+    \textbf{Scénarios alternatifs et exceptions :}
+    \begin{itemize}
+        \item \textbf{A1} : Aucune version antérieure n'est disponible. Le système informe le rédacteur.
+        \item \textbf{A2} : La version sélectionnée n'existe plus ou n'est pas accessible. Le système refuse la restauration.
+        \item \textbf{A3} : Le rédacteur ne dispose pas des droits nécessaires. Le système refuse l'opération.
+        \item \textbf{A4} : Des modifications simultanées sont en cours. Le système coordonne la restauration avec les autres modifications pour éviter toute perte de données.
+        \item \textbf{A5} : Une erreur survient pendant la restauration. Le système signale l'échec sans présenter une restauration incomplète comme réussie.
+    \end{itemize}
+
+    \textbf{Postconditions :} Le contenu du document correspond à la version restaurée, sous réserve de la stratégie de restauration retenue ; l'historique est préservé ; les collaborateurs peuvent consulter l'état restauré.
+
+    \item[UC07 --- Créer un lien de téléchargement]
+
+    \textbf{Acteur principal :} Rédacteur.
+
+    \textbf{Objectif :} Permettre à un rédacteur autorisé de créer un lien de téléchargement pour un document, avec un quota défini.
+
+    \textbf{Préconditions :}
+    \begin{itemize}
+        \item Le document existe.
+        \item Le rédacteur dispose des droits nécessaires.
+        \item Le rédacteur n'est pas bloqué, si le blocage interdit cette opération.
+    \end{itemize}
+
+    \textbf{Scénario nominal :}
+    \begin{enumerate}
+        \item Le rédacteur ouvre le document concerné.
+        \item Le rédacteur demande la création d'un lien de téléchargement.
+        \item Le système vérifie ses droits.
+        \item Le système demande le nombre de téléchargements autorisés.
+        \item Le rédacteur saisit le quota souhaité.
+        \item Le système vérifie que le quota est valide et strictement positif.
+        \item Le système crée un lien unique associé au document.
+        \item Le système initialise le quota total et le nombre de téléchargements restants.
+        \item Le système active le lien.
+        \item Le système communique le lien au rédacteur.
+    \end{enumerate}
+
+    \textbf{Scénarios alternatifs et exceptions :}
+    \begin{itemize}
+        \item \textbf{A1} : Le quota fourni est invalide. Le système demande une nouvelle valeur.
+        \item \textbf{A2} : Le rédacteur ne dispose pas des droits nécessaires. Le système refuse la création.
+        \item \textbf{A3} : Une erreur survient pendant la création. Le système informe le rédacteur de l'échec.
+    \end{itemize}
+
+    \textbf{Postconditions :} Un lien de téléchargement est créé, associé au document, avec quota initialisé ; il permet de télécharger le document dans la limite autorisée.
+
+    \item[UC08 --- Télécharger un journal]
+
+    \textbf{Acteur principal :} Visiteur.
+
+    \textbf{Objectif :} Permettre à un visiteur anonyme de télécharger le document au format PDF, dans la limite du quota du lien.
+
+    \textbf{Préconditions :}
+    \begin{itemize}
+        \item Le visiteur possède un lien de téléchargement.
+        \item Le lien correspond à un lien reconnu par le système.
+    \end{itemize}
+
+    \textbf{Scénario nominal :}
+    \begin{enumerate}
+        \item Le visiteur ouvre le lien de téléchargement.
+        \item Le système vérifie l'existence et la validité du lien.
+        \item Le système vérifie l'état du lien et son quota disponible.
+        \item Le système vérifie qu'une place de téléchargement peut être attribuée.
+        \item Le système réserve atomiquement une place dans le quota afin de prévenir tout dépassement en cas de demandes simultanées.
+        \item Le système indique au visiteur que sa demande est en cours de traitement.
+        \item Le système obtient un état cohérent du document au moment de la prise en charge du téléchargement.
+        \item Le système génère le PDF correspondant à cet état.
+        \item Le système met le fichier à disposition du visiteur.
+        \item Le système indique que le téléchargement est terminé ou fournit les informations nécessaires à sa récupération.
+        \item Le système finalise le traitement du téléchargement.
+        \item Si le dernier téléchargement autorisé est consommé, le système informe le créateur du lien par e-mail.
+    \end{enumerate}
+
+    \textbf{Scénarios alternatifs et exceptions :}
+    \begin{itemize}
+        \item \textbf{A1} : Le lien est invalide. Le système informe le visiteur.
+        \item \textbf{A2} : Le quota est épuisé. Le système indique clairement que le journal n'est plus disponible.
+        \item \textbf{A3} : Le visiteur arrive pendant un pic de charge. Le système lui indique si son téléchargement est en cours, en attente ou si le quota est épuisé.
+        \item \textbf{A4} : Le quota est consommé pendant le traitement d'autres demandes. Le système refuse les nouvelles demandes non réservées.
+        \item \textbf{A5} : Le PDF ne peut pas être généré. Le système applique une politique de traitement des échecs cohérente avec la réservation du quota.
+        \item \textbf{A6} : Le téléchargement échoue pendant la transmission. Le système applique la politique prévue pour le quota et informe le visiteur.
+        \item \textbf{A7} : Le dernier exemplaire vient d'être distribué. Le système informe rapidement les visiteurs encore en attente que le quota est épuisé.
+    \end{itemize}
+
+    \textbf{Postconditions :}
+    \begin{itemize}
+        \item Le téléchargement autorisé est traité conformément aux règles de quota.
+        \item Le quota ne dépasse jamais le nombre autorisé.
+        \item Le visiteur reçoit une information sur l'état de sa demande.
+        \item Le document téléchargé correspond à un état complet et cohérent.
+    \end{itemize}
+
+    \item[UC09 --- Consulter l'état de la demande de téléchargement]
+
+    \textbf{Acteur principal :} Visiteur.
+
+    \textbf{Objectif :} Permettre au visiteur de connaître l'état de sa demande de téléchargement.
+
+    \textbf{Préconditions :}
+    \begin{itemize}
+        \item Le visiteur a initié une demande de téléchargement.
+        \item Le système dispose d'un moyen permettant de retrouver cette demande, par exemple un identifiant ou un mécanisme de suivi.
+    \end{itemize}
+
+    \textbf{Scénario nominal :}
+    \begin{enumerate}
+        \item Le visiteur accède à l'interface de suivi de sa demande.
+        \item Le visiteur fournit ou utilise les informations de suivi disponibles.
+        \item Le système recherche la demande correspondante.
+        \item Le système détermine l'état actuel de la demande.
+        \item Le système affiche l'état au visiteur.
+    \end{enumerate}
+
+    \textbf{Scénarios alternatifs et exceptions :}
+    \begin{itemize}
+        \item \textbf{A1} : La demande est en attente. Le système indique que le visiteur doit patienter.
+        \item \textbf{A2} : La demande est en cours de traitement. Le système informe le visiteur.
+        \item \textbf{A3} : La demande est terminée. Le système indique que le téléchargement est disponible ou terminé.
+        \item \textbf{A4} : Le quota est épuisé avant la prise en charge. Le système informe le visiteur que le téléchargement n'est plus disponible.
+        \item \textbf{A5} : La demande est refusée. Le système indique le motif lorsque celui-ci peut être communiqué.
+        \item \textbf{A6} : La demande est introuvable ou l'identifiant de suivi est invalide. Le système informe le visiteur.
+    \end{itemize}
+
+    \textbf{Postconditions :} Le visiteur connaît l'état de sa demande ; aucune modification du quota n'est effectuée par la simple consultation.
+
+    \item[UC10 --- Consulter les documents ouverts]
+
+    \textbf{Acteur principal :} Administrateur.
+
+    \textbf{Objectif :} Permettre à l'administrateur de superviser les documents actuellement ouverts dans l'application.
+
+    \textbf{Préconditions :}
+    \begin{itemize}
+        \item L'administrateur est identifié.
+        \item L'administrateur dispose des droits de supervision.
+    \end{itemize}
+
+    \textbf{Scénario nominal :}
+    \begin{enumerate}
+        \item L'administrateur accède à l'espace de supervision.
+        \item Il sélectionne la fonctionnalité de consultation des documents ouverts.
+        \item Le système vérifie ses droits.
+        \item Le système recherche les documents actuellement ouverts.
+        \item Le système récupère les informations de supervision disponibles.
+        \item Le système affiche les documents ouverts.
+        \item L'administrateur consulte les informations affichées, notamment les documents concernés et, si disponible, les rédacteurs présents.
+        \item L'administrateur termine la consultation.
+    \end{enumerate}
+
+    \textbf{Scénarios alternatifs et exceptions :}
+    \begin{itemize}
+        \item \textbf{A1} : Aucun document n'est actuellement ouvert. Le système affiche un message approprié.
+        \item \textbf{A2} : L'administrateur ne possède pas les droits nécessaires. Le système refuse l'accès.
+        \item \textbf{A3} : Un document se ferme pendant la consultation. Le système actualise son état selon le mécanisme de supervision retenu.
+        \item \textbf{A4} : Une erreur survient lors de la récupération des données. Le système informe l'administrateur.
+    \end{itemize}
+
+    \textbf{Postconditions :} L'administrateur a pu consulter l'état des documents ouverts ; aucune modification du contenu n'est effectuée par la simple consultation.
+
+    \textit{Remarque :} Les informations de présence doivent correspondre à l'état réel des sessions. Le système doit prévoir comment traiter les sessions interrompues ou les déconnexions non signalées.
+
+    \item[UC11 --- Consulter les liens de téléchargement]
+
+    \textbf{Acteur principal :} Administrateur.
+
+    \textbf{Objectif :} Permettre à l'administrateur de consulter les liens de téléchargement actifs et leurs quotas restants.
+
+    \textbf{Préconditions :}
+    \begin{itemize}
+        \item L'administrateur est identifié.
+        \item L'administrateur dispose des droits de supervision.
+    \end{itemize}
+
+    \textbf{Scénario nominal :}
+    \begin{enumerate}
+        \item L'administrateur accède à l'espace de supervision.
+        \item Il sélectionne la fonctionnalité de consultation des liens de téléchargement.
+        \item Le système vérifie ses droits.
+        \item Le système récupère les liens de téléchargement à superviser.
+        \item Le système récupère les informations associées à chaque lien.
+        \item Le système affiche les informations pertinentes, notamment : le document concerné, l'état du lien, le quota initial, le nombre de téléchargements consommés, le nombre de téléchargements restants.
+        \item L'administrateur consulte les informations.
+    \end{enumerate}
+
+    \textbf{Scénarios alternatifs et exceptions :}
+    \begin{itemize}
+        \item \textbf{A1} : Aucun lien n'est disponible. Le système affiche un message approprié.
+        \item \textbf{A2} : L'administrateur ne possède pas les droits nécessaires. Le système refuse l'accès.
+        \item \textbf{A3} : Certains liens sont épuisés ou désactivés. Le système affiche leur état respectif.
+        \item \textbf{A4} : Une erreur survient lors du chargement des données. Le système informe l'administrateur.
+    \end{itemize}
+
+    \textbf{Postconditions :} L'administrateur a pu consulter les informations disponibles sur les liens ; aucune modification du quota ou de l'état des liens n'est effectuée par la simple consultation.
+
+    \textit{Remarque :} La consultation porte sur les liens et leurs quotas. Une opération de modification ou de désactivation des liens nécessiterait un cas d'utilisation supplémentaire si elle est retenue.
+
+    \item[UC12 --- Consulter les rédacteurs bloqués]
+
+    \textbf{Acteur principal :} Administrateur.
+
+    \textbf{Objectif :} Permettre à l'administrateur de consulter la liste des rédacteurs temporairement bloqués par le système.
+
+    \textbf{Préconditions :}
+    \begin{itemize}
+        \item L'administrateur est identifié et autorisé à accéder à la fonctionnalité de supervision.
+    \end{itemize}
+
+    \textbf{Scénario nominal :}
+    \begin{enumerate}
+        \item L'administrateur accède à l'espace de supervision.
+        \item Il sélectionne la fonctionnalité de consultation des rédacteurs bloqués.
+        \item Le système vérifie ses droits.
+        \item Le système recherche les rédacteurs actuellement bloqués.
+        \item Le système récupère les informations nécessaires à leur identification et à leur suivi.
+        \item Le système affiche la liste des rédacteurs bloqués.
+        \item L'administrateur consulte les informations disponibles.
+    \end{enumerate}
+
+    \textbf{Scénarios alternatifs et exceptions :}
+    \begin{itemize}
+        \item \textbf{A1} : Aucun rédacteur n'est actuellement bloqué. Le système affiche une liste vide ou un message approprié.
+        \item \textbf{A2} : L'administrateur ne possède pas les droits nécessaires. Le système refuse l'accès.
+        \item \textbf{A3} : Une erreur survient lors de la récupération des informations. Le système informe l'administrateur.
+    \end{itemize}
+
+    \textbf{Postconditions :} L'administrateur a pu consulter la liste des rédacteurs bloqués ; aucune modification du statut des rédacteurs n'est effectuée par la simple consultation.
+
+    \textit{Remarque :} Le déblocage d'un rédacteur n'est pas décrit comme un cas d'utilisation distinct dans le diagramme présenté. Il ne faut donc pas le considérer comme une fonctionnalité acquise sans validation.
+\end{description}
+
+\section{Diagramme de classes}
+
+Le diagramme de classes du système comprend les entités principales suivantes et leurs relations :
+
+\begin{itemize}
+    \item \textbf{Rédacteur} : id, nom, email, crédit restant ; participe à un ou plusieurs documents ; possède un quota d'écriture par jour ; peut être bloqué.
+    \item \textbf{Document} : id, titre, contenu, version active ; possède un ensemble de versions (au moins une) ; peut générer plusieurs liens de téléchargement.
+    \item \textbf{Version} : id, numéro, contenu, horodatage ; appartient à un document ; peut être référencée par un téléchargement.
+    \item \textbf{LienTéléchargement} : id, quota, téléchargements consommés, créateur ; associé à un document ; concerne plusieurs téléchargements.
+    \item \textbf{Téléchargement} : id, lien, version référencée, état, date de demande ; traite la génération du PDF.
+    \item \textbf{QuotaÉcriture} : rédacteur, date, caractères utilisés, limite ; consommé par les modifications.
+    \item \textbf{Blocage} : id, rédacteur, motif, dates de début et de fin.
+\end{itemize}
+
+\begin{infobox}
+La multiplicité \texttt{1..*} entre \texttt{Document} et \texttt{Version} traduit le fait qu'un document possède au moins une version et en accumule à chaque sauvegarde. Le lien de téléchargement n'est pas lié à une version figée : c'est la \texttt{Téléchargement} qui référence la version au moment de la demande, garantissant le principe de validité du lien.
+\end{infobox}
+
+\section{Diagrammes d'activités}
+
+\subsection{Distribution d'un document via un lien}
+
+Le processus de distribution d'un document via un lien se déroule ainsi :
+
+\begin{enumerate}
+    \item Le visiteur demande le téléchargement.
+    \item Le système vérifie si le quota est disponible. Si non, il refuse avec la mention « quota épuisé ».
+    \item Si oui, le système réserve atomiquement une place.
+    \item Le système fige l'état du document (référence à une version).
+    \item Le système génère le PDF.
+    \item Si la génération réussit, le système livre le PDF au visiteur. Si la génération échoue, la place est rendue et le visiteur est notifié.
+    \item Après livraison, le système vérifie si la place consommée était la dernière. Si oui, il notifie le créateur par e-mail.
+\end{enumerate}
+
+\begin{infobox}
+La place est réservée \emph{avant} la génération du PDF (réservation atomique). Si la génération échoue, la place est rendue, ce qui garantit qu'un lien à quota $N$ permet bien $N$ téléchargements réussis, même en cas de panne transitoire, sans jamais dépasser $N$.
+\end{infobox}
+
+\subsection{Modification d'un document}
+
+Le processus de modification d'un document par un rédacteur se déroule ainsi :
+
+\begin{enumerate}
+    \item Le rédacteur ouvre le document.
+    \item Le système vérifie ses droits d'écriture. Si non, il refuse.
+    \item Le système vérifie que le rédacteur n'est pas bloqué. Si oui, il refuse.
+    \item Le système vérifie que le crédit est disponible. Si non, il refuse les nouvelles écritures.
+    \item Le rédacteur saisit ou modifie du texte.
+    \item Le système fusionne sans perte avec l'état courant.
+    \item Le système propage la modification aux collaborateurs.
+    \item Le système met à jour le crédit du rédacteur.
+    \item Le système conserve la modification et l'historique.
+\end{enumerate}
+
+\section{Diagrammes d'états-transitions}
+
+\subsection{Cycle de vie d'une demande de téléchargement}
+\label{sec:cycle-vie-demande}
+
+Une demande de téléchargement passe par les états suivants :
+
+\begin{itemize}
+    \item \textbf{Reçue} : la demande est enregistrée, avant décision.
+    \item \textbf{En attente} : la demande est placée en file si la capacité ou les places disponibles ne permettent pas une admission immédiate.
+    \item \textbf{Autorisée} : une place a été réservée atomiquement. C'est à cette transition que la place est consommée au sens de la réservation.
+    \item \textbf{Refusée « épuisé »} : aucune place n'est disponible. Cet état est définitif pour un lien donné.
+    \item \textbf{PDF prêt} : le PDF a été généré pour l'état figé du document.
+    \item \textbf{Terminée} : le PDF a été livré. La place est définitivement consommée au sens de la livraison.
+    \item \textbf{Échouée} : la génération du PDF a échoué ou le visiteur n'a pas abouti. La place est rendue.
+\end{itemize}
+
+\begin{infobox}
+La place est \textbf{réservée} à la transition \textit{Reçue} $\to$ \textit{Autorisée}, ce qui empêche tout dépassement en cas de concurrence. Elle est \textbf{livrée} à la transition \textit{PDF prêt} $\to$ \textit{Terminée}, et \textbf{rendue} à la transition \textit{PDF prêt} $\to$ \textit{Échouée}. Aucune demande ne peut passer de \textit{Refusée} à un autre état : le quota épuisé est définitif pour un lien donné.
+\end{infobox}
+
+\subsection{Cycle de vie d'un document et des versions}
+
+Un document passe par les états suivants : \textit{Créé}, \textit{En édition}, \textit{Version sauvegardée}, \textit{Version restaurée}. Les transitions sont :
+
+\begin{itemize}
+    \item \textit{Créé} $\to$ \textit{En édition} : à l'ouverture pour édition.
+    \item \textit{En édition} $\to$ \textit{Version sauvegardée} : à chaque sauvegarde explicite ou fin de session.
+    \item \textit{Version sauvegardée} $\to$ \textit{En édition} : à la reprise d'édition.
+    \item \textit{En édition} $\to$ \textit{Version restaurée} : à la demande de restauration.
+    \item \textit{Version restaurée} $\to$ \textit{Version sauvegardée} : la restauration crée une nouvelle version.
+\end{itemize}
+
+\begin{infobox}
+Restaurer ne détruit pas l'historique : cela crée une nouvelle version dont le contenu est celui de la version restaurée (cf. section~\ref{sec:auth-admin} et les hypothèses sur la gestion des versions).
+\end{infobox}
+
+% ============================================

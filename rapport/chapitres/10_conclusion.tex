@@ -1,0 +1,19 @@
+\chapter*{Conclusion}
+\addcontentsline{toc}{chapter}{Conclusion}
+\markboth{Conclusion}{Conclusion}
+
+Ce rapport a présenté la conception intégrale d'un éditeur de documents partagé pour une association produisant une revue numérique collaborative. Il a identifié les trois acteurs du système, délimité le périmètre fonctionnel, formalisé les exigences fonctionnelles et non fonctionnelles (avec un focus sur les contraintes critiques C1 à C6), énoncé les principes métier structurants, et fourni une analyse de conception détaillée.
+
+L'architecture cloud AWS retenue concilie de manière pragmatique et performante les deux régimes d'accès du système :
+\begin{itemize}
+    \item Une voie d'édition collaborative temps réel basée sur une instance EC2 légère et le protocole de sockets $y$-websocket, offrant une latence minimale et une convergence mathématique sans verrou grâce aux CRDTs (C2) ;
+    \item Une voie de distribution documentaire à haute disponibilité reposant sur l'atomicité native d'Amazon DynamoDB pour garantir le respect strict du quota sans surréservation (C1), le découplage asynchrone des compilations lourdes via Amazon SQS, et le délestage intégral de la bande passante grâce aux URLs présignées Amazon S3.
+\end{itemize}
+
+Cette architecture tire parti des bonnes pratiques acquises en cours, respecte les principes de sécurité du moindre privilège via les rôles IAM IMDSv2, et s'exécute sans aucun surcoût dans le cadre des crédits alloués. Les tests de charge et de convergence associés permettront de prouver formellement la tenue de l'ensemble des critères d'évaluation sous les conditions réelles de trafic.
+
+\vfill
+\begin{center}
+    {\color{violetprincipal}\rule{0.4\linewidth}{0.8pt}}\\[0.3cm]
+    {\small\color{violetclair}\textit{--- Fin du rapport ---}}
+\end{center}

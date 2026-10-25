@@ -1,0 +1,126 @@
+\chapter{Principes métier fondamentaux}
+
+\section{Principe de cohérence documentaire}
+\begin{principebox}[Cohérence documentaire]
+Un téléchargement doit correspondre à un état identifiable du document. Une fois cet état retenu pour une demande, le contenu utilisé pour produire le PDF ne doit pas changer pendant sa génération. Une demande ultérieure peut correspondre à un état plus récent.
+
+\smallskip
+\textbf{Traduction :} l'état est identifié par un numéro de version, figé au moment de la transition \emph{reçue} $\to$ \emph{autorisée} de la demande (cf. section~\ref{sec:cycle-vie-demande}).
+\end{principebox}
+
+\section{Principe de validité du lien}
+\begin{principebox}[Validité du lien]
+Un lien de téléchargement référence un document et possède un quota d'utilisation. Il n'est pas lié à une copie figée du contenu au moment de sa création. Tant qu'il reste valide et qu'une utilisation est autorisée, il permet de télécharger l'état du document retenu pour la nouvelle demande.
+\end{principebox}
+
+\section{Principe de respect strict du quota}
+
+\begin{criticalbox}[Règle complète du quota]
+Le nombre de téléchargements effectivement livrés ne doit jamais dépasser le quota défini, et doit l'atteindre lorsque la demande le permet. Un lien à 3 téléchargements doit permettre exactement 3 téléchargements réussis, jamais 2 par perte de place.
+\end{criticalbox}
+
+Deux quantités distinctes doivent être définies sans ambiguïté :
+\begin{itemize}
+    \item \textbf{Place réservée} : une place est réservée lors de la transition \emph{reçue} $\to$ \emph{autorisée} de la demande de téléchargement.
+    \item \textbf{Téléchargement livré} : un téléchargement est compté comme livré lorsque le PDF est effectivement remis au visiteur.
+\end{itemize}
+
+\begin{hypothesisbox}
+Choix retenu : \textbf{la place est réservée à l'admission} (transition \emph{reçue} $\to$ \emph{autorisée}). Si la génération du PDF échoue, ou si le visiteur n'aboutit pas, la place est \textbf{rendue} (transition \emph{autorisée} $\to$ \emph{échouée} $\to$ \emph{libérée}). Ainsi un lien à quota 3 permet bien 3 téléchargements réussis en cas de panne transitoire, tout en garantissant qu'aucun 4\textsuperscript{e} téléchargement ne peut être admis tant que les 3 places ne sont pas rendues ou livrées.
+\end{hypothesisbox}
+
+Le compteur exposé à l'administrateur est le nombre de places \emph{disponibles} (quota moins places réservées et moins téléchargements livrés).
+
+\section{Principe de conservation des modifications}
+\begin{principebox}[Conservation des modifications]
+Toute modification acceptée doit être conservée. Lorsque plusieurs rédacteurs interviennent simultanément, le système doit préserver leurs modifications et garantir la convergence du document. Ce principe est critique (cf. contrainte C2).
+\end{principebox}
+
+\section{Principe de limitation de l'écriture}
+\begin{principebox}[Limitation de l'écriture]
+Chaque rédacteur bénéficie d'un crédit quotidien de \textbf{10\,000 caractères}, rechargé chaque jour. Lorsque son crédit est épuisé, il ne peut plus écrire jusqu'au prochain rechargement, même en changeant d'appareil.
+\end{principebox}
+
+\subsection{Précisions sur le crédit d'écriture}
+
+\begin{hypothesisbox}
+Définitions retenues pour lever toute ambiguïté :
+\begin{itemize}
+    \item \textbf{Unité comptée} : caractères \emph{insérés}. Les suppressions et les remplacements ne sont pas comptés, seules les insertions nettes le sont.
+    \item \textbf{Collage} : un collage de $n$ caractères consomme $n$ unités. Un collage refusé faute de crédit n'insère rien et ne consomme rien.
+    \item \textbf{Fuseau horaire} : le « jour » est défini en UTC, rechargement à 00:00 UTC.
+    \item \textbf{Clé d'identification} : le couple (nom, e-mail) fourni à l'entrée est la clé de comptage. C'est aussi la limite assumée : un rédacteur qui change d'identité contourne la limite.
+    \item \textbf{Multi-appareils} : le crédit est porté par l'identité, non par l'appareil ; il est donc partagé entre appareils.
+\end{itemize}
+\end{hypothesisbox}
+
+\section{Principe de blocage en cas de tentative de contournement}
+
+\begin{hypothesisbox}
+Seuils et durées retenus, ajustables après tests :
+\begin{itemize}
+    \item \textbf{Clé de blocage} : couple (nom, e-mail).
+    \item \textbf{Seuil} : blocage déclenché au-delà de 3 tentatives d'écriture refusées pour crédit épuisé dans une fenêtre de 10 minutes.
+    \item \textbf{Durée} : blocage temporaire de 24 heures.
+    \item \textbf{Limite assumée} : l'identification étant déclarative, changer d'identité contourne le blocage. C'est un choix de conception cohérent avec l'absence de comptes réels, documenté comme tel.
+\end{itemize}
+\end{hypothesisbox}
+
+\section{Principe de gestion des versions et de l'historique}
+
+\begin{hypothesisbox}
+Le sujet parle de « versions précédentes », le présent rapport parle d'« historique des modifications ». Ce ne sont pas la même granularité. Choix retenu :
+\begin{itemize}
+    \item \textbf{Granularité} : une version est créée à chaque sauvegarde explicite et à chaque fin de session d'édition (regroupement des modifications d'une même session).
+    \item \textbf{Conservation de l'historique} : restaurer une version ne détruit pas l'historique. La restauration \emph{crée une nouvelle version} dont le contenu est celui de la version restaurée.
+    \item \textbf{Crédit d'écriture} : restaurer ne consomme pas de crédit d'écriture (ce n'est pas une écriture au sens de la saisie).
+\end{itemize}
+\end{hypothesisbox}
+
+\section{Principe de droits d'accès}
+
+\begin{hypothesisbox}
+Le sujet mentionne « selon ses droits » sans les définir. Le tableau~\ref{tab:droits} retient la matrice suivante.
+\end{hypothesisbox}
+
+\begin{longtable}{>{\raggedright\arraybackslash}p{4.2cm} *{4}{>{\centering\arraybackslash}p{2.3cm}}}
+    \caption{Matrice des droits par acteur et par action}\label{tab:droits}\\
+    \toprule
+    \rowcolor{violetprincipal}
+    \thead{Action} & \thead{Créateur} & \thead{Collaborateur} & \thead{Visiteur} & \thead{Admin} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \rowcolor{violetprincipal}
+    \thead{Action} & \thead{Créateur} & \thead{Collaborateur} & \thead{Visiteur} & \thead{Admin} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endfoot
+    Lire le document & \checkmark & \checkmark & --- & \checkmark \\
+    \rowcolor{violettresclair}
+    Écrire dans le document & \checkmark & \checkmark & --- & --- \\
+    Partager le document & \checkmark & --- & --- & --- \\
+    \rowcolor{violettresclair}
+    Consulter l'historique & \checkmark & \checkmark & --- & \checkmark \\
+    Restaurer une version & \checkmark & --- & --- & --- \\
+    \rowcolor{violettresclair}
+    Créer un lien de téléchargement & \checkmark & --- & --- & --- \\
+    Télécharger via un lien & --- & --- & \checkmark & --- \\
+    \rowcolor{violettresclair}
+    Superviser l'application & --- & --- & --- & \checkmark \\
+\end{longtable}
+
+\section{Principe de la notification au créateur}
+
+\begin{hypothesisbox}
+Un seul e-mail est envoyé au créateur du lien lorsqu'il ne reste plus aucune place disponible. L'envoi est déclenché par la transaction qui consomme la dernière place, dans une section critique, afin qu'en cas de concurrence un seul envoi soit effectué.
+\end{hypothesisbox}
+
+\section{Principe des paramètres du lien}
+
+\begin{hypothesisbox}
+Un lien possède un quota (nombre maximal de téléchargements) et une date d'expiration optionnelle. En l'absence de date, il n'expire pas. Il devient inutilisable dès que le quota est atteint.
+\end{hypothesisbox}
+
+% ============================================

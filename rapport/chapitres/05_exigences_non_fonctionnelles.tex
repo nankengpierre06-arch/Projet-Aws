@@ -1,0 +1,105 @@
+\chapter{Exigences non fonctionnelles et critères mesurables}
+
+\section{Contraintes critiques et majeures du projet}
+
+L'énoncé du projet identifie deux contraintes critiques absolues (C1 et C2) dont le non-respect entraîne l'échec immédiat de l'évaluation, complétées par quatre contraintes d'exploitation majeures (C3 à C6) et des contraintes d'infrastructure strictes.
+
+\begin{criticalbox}[C1 --- Quota strict et exact des liens de téléchargement]
+Un lien créé avec un quota de $N$ téléchargements autorisés doit permettre \textbf{exactement} $N$ téléchargements réussis : jamais un de plus ($N+1$), jamais un de moins par perte indue de place, quel que soit le nombre de visiteurs cliquant au même milliseconde.
+
+\smallskip
+\textbf{Critère de vérification :} Lors d'un test de charge massif avec plusieurs milliers de requêtes concurrentes sur un lien à quota 500, on doit observer exactement 500 téléchargements accordés, les requêtes surnuméraires rejetées pour épuisement, et strictement zéro sur-livraison.
+
+\smallskip
+\textbf{Preuve formelle :} Vérification de l'atomicité de l'opération de décrément et de l'invariant \texttt{téléchargements\_livrés = min(demandes\_admissibles, quota)}.
+\end{criticalbox}
+
+\begin{criticalbox}[C2 --- Zéro perte de modification et convergence collaborative]
+Quel que soit le nombre de rédacteurs intervenant simultanément (jusqu'à 300 rédacteurs actifs), y compris sur le même mot ou le même caractère, aucune modification acceptée par le système ne doit être perdue, et l'ensemble des participants doit converger vers un document strictement identique.
+
+\smallskip
+\textbf{Critère de vérification :} Sur un scénario de test injectant des centaines de frappes concurrentes en temps réel, l'état final du document doit être mathématiquement identique sur tous les clients connectés, sans écrasement par la dernière écriture (\emph{Last-Write-Wins} destructif).
+
+\smallskip
+\textbf{Preuve formelle :} Utilisation de structures de types de données répliquées sans conflit (CRDT) garantissant la convergence déterministe.
+\end{criticalbox}
+
+\begin{criticalbox}[C3 --- Fraîcheur dynamique du document à l'instant d'utilisation]
+Un lien créé à l'instant $T$ et sollicité à l'instant $T_1$, après des modifications ultérieures du texte par les rédacteurs, doit impérativement fournir le document complet et cohérent tel qu'il est à l'instant $T_1$, sans nécessiter la génération ni la diffusion d'un nouveau lien.
+
+\smallskip
+\textbf{Critère de vérification :} Une modification apportée à $T_1 - \epsilon$ doit figurer dans le PDF généré pour le visiteur admis à $T_1$.
+\end{criticalbox}
+
+\begin{criticalbox}[C4 --- Plafond strict du crédit quotidien d'écriture]
+Chaque rédacteur dispose d'un crédit d'écriture strictement plafonné à \textbf{10\,000 caractères par jour}, rechargé quotidiennement. Ce plafond s'applique à l'identité déclarée du rédacteur de manière centralisée, y compris s'il ouvre plusieurs fenêtres ou se connecte depuis plusieurs appareils distincts simultanément. Toute tentative d'acharnement contre ces limites doit entraîner un blocage temporaire automatique.
+
+\smallskip
+\textbf{Critère de vérification :} Injection parallèle de requêtes d'insertion depuis plusieurs sessions simultanées ; le cumul des caractères acceptés sur la journée ne doit jamais dépasser 10\,000.
+\end{criticalbox}
+
+\begin{criticalbox}[C5 --- Absorption du pic de trafic sans effondrement]
+À l'heure précise de parution du journal, le système doit absorber un afflux de \textbf{15\,000 visiteurs}, dont \textbf{80\,\%} surviennent dans la première minute (soit un débit moyen d'environ 200 requêtes par seconde, avec des pointes instantanées pouvant atteindre 500 à 800 requêtes par seconde), tout en maintenant l'édition active pour 300 rédacteurs. L'application ne doit ni planter, ni abandonner de requêtes silencieusement : chaque visiteur doit recevoir immédiatement une réponse explicite (téléchargement immédiat, mise en attente de compilation, ou épuisement).
+
+\smallskip
+\textbf{Critère de vérification :} Test d'injection de 15\,000 requêtes sur 60 secondes ; absence d'erreurs 502/504 et temps de réponse rapide pour le refus des places épuisées.
+\end{criticalbox}
+
+\begin{criticalbox}[C6 --- Rétroaction immédiate d'épuisement et notification]
+Dès que le dernier exemplaire ($N$-ième) est attribué, le système doit immédiatement orienter les visiteurs suivants vers un état d'épuisement clair, sans déclencher de calculs ni de compilations PDF inutiles. Le créateur du lien doit être immédiatement notifié par e-mail de la distribution du dernier exemplaire.
+
+\smallskip
+\textbf{Critère de vérification :} Temps de réponse inférieur à 20 ms pour le renvoi du statut épuisé après attribution de la dernière place, et réception d'un unique message électronique de notification.
+\end{criticalbox}
+
+\section{Contraintes d'infrastructure et règles d'évaluation}
+
+Le sujet impose un ensemble de règles strictes régissant l'hébergement et la conception de la solution :
+
+\begin{itemize}
+    \item \textbf{Compte AWS et plan d'accès :} L'infrastructure est déployée sur un compte AWS personnel, optimisée pour le plan gratuit (\emph{Free Tier}) ou couverte par les crédits pédagogiques disponibles (enveloppe de 100\,\$ USD), garantissant un coût réel de 0,00\,\$ pour l'étudiant.
+    \item \textbf{Région unique :} L'ensemble des composants doit résider au sein d'une seule et même région AWS (par exemple \texttt{eu-west-3} Paris ou \texttt{eu-north-1} Stockholm).
+    \item \textbf{Stockage des documents :} L'énoncé prescrit explicitement que les fichiers PDF finaux doivent être conservés dans le service de stockage objet Amazon S3.
+    \item \textbf{Sécurité et gestion des identifiants (IAM) :} Aucune clé d'accès statique (de type \texttt{AKIA...}) ne doit apparaître dans le code source ou dans le dépôt Git. Les composants doivent s'exécuter sous le principe du moindre privilège via des rôles d'instance sécurisés (IMDSv2).
+    \item \textbf{Délai de réalisation court (Un week-end) :} Le projet étant réalisé du vendredi soir au lundi matin, l'architecture doit privilégier des composants fiables, maintenables et simples à expliquer et tester, plutôt qu'une sur-complexification logicielle.
+\end{itemize}
+
+\section{Disponibilité et capacité : objectifs chiffrés mesurables}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Objectifs de performance et métriques cibles}
+    \label{tab:objectifs-perf}
+    \begin{tabular}{p{6.5cm} p{4.5cm} p{3.5cm}}
+        \toprule
+        \rowcolor{violetprincipal}
+        \thead{Indicateur} & \thead{Objectif cible} & \thead{Condition} \\
+        \midrule
+        Taux de succès de réponse & 100\,\% des requêtes traitées & Pic de 15\,000 visiteurs \\
+        \rowcolor{violettresclair}
+        Temps de réponse (refus quota épuisé) & $P_{95} < 50$\,ms & Pendant le pic \\
+        Latence de synchronisation collaborative & $P_{95} < 200$\,ms & 300 rédacteurs actifs \\
+        \rowcolor{violettresclair}
+        Dépassement de quota autorisé & Strictement 0 & Test de concurrence \\
+        Perte de modification acceptée & Strictement 0 & Test de convergence \\
+        \rowcolor{violettresclair}
+        Dépassement crédit de 10\,000 caractères & Strictement 0 & Multi-sessions \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\section{Sécurité et gestion des accès}
+\begin{itemize}
+    \item Application stricte du moindre privilège sur chaque ressource AWS.
+    \item Absence totale d'identifiants permanents dans le code ou sur l'instance.
+    \item Isolation des données : accès au bucket S3 restreint au rôle de l'application.
+    \item Chiffrement des communications en transit via HTTPS et WebSockets sécurisés (WSS).
+\end{itemize}
+
+\subsection{Authentification de l'administrateur}
+\label{sec:auth-admin}
+
+\begin{hypothesisbox}
+L'authentification de l'administrateur s'effectue via un secret fort stocké dans les variables d'environnement système (ou AWS Systems Manager Parameter Store), vérifié côté serveur avec protection contre les attaques par force brute.
+\end{hypothesisbox}
+

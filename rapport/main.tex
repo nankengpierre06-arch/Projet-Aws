@@ -1,0 +1,240 @@
+\documentclass[11pt,a4paper]{report}
+
+% ============================================
+% PACKAGES
+% ============================================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\IfFileExists{french.ldf}{\usepackage[french]{babel}}{\usepackage[provide=*]{babel}\babelprovide[main, import]{french}}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage[table]{xcolor}
+\usepackage{colortbl}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\IfFileExists{fontawesome5.sty}{\usepackage{fontawesome5}}{\newcommand{\faBullseye}{\ensuremath{\odot}}\newcommand{\faQuestionCircle}{?}\newcommand{\faExclamationTriangle}{\ensuremath{\blacktriangle}}}
+\usepackage{tcolorbox}
+\tcbuselibrary{skins,breakable}
+\usepackage{multicol}
+\usepackage{lastpage}
+
+% ============================================
+% THÈME VIOLET
+% ============================================
+\definecolor{violetprincipal}{RGB}{102, 51, 153}
+\definecolor{violetclair}{RGB}{153, 102, 204}
+\definecolor{violettresclair}{RGB}{230, 220, 245}
+\definecolor{violetfonce}{RGB}{75, 0, 130}
+\definecolor{violetaccent}{RGB}{186, 85, 211}
+\definecolor{violetcritique}{RGB}{128, 0, 64}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=violetprincipal,
+    urlcolor=violetaccent,
+    citecolor=violetprincipal,
+    pdftitle={Rapport : Un éditeur de documents partagé},
+    pdfauthor={Rapport de projet},
+    pdfsubject={Éditeur collaboratif de documents},
+}
+
+% ============================================
+% TITRES
+% ============================================
+\titleformat{\chapter}[display]
+  {\normalfont\huge\bfseries\color{violetprincipal}}
+  {\filleft\Large\color{violetclair}\textsc{Chapitre} \thechapter}
+  {1ex}{\filleft}
+  [\vspace{0.5ex}{\color{violetprincipal}\titlerule[1.5pt]}]
+\titlespacing*{\chapter}{0pt}{-20pt}{30pt}
+
+\titleformat{\section}
+  {\Large\bfseries\color{violetprincipal}}
+  {\thesection}{0.6em}{}
+  [\vspace{-0.3em}\color{violetprincipal}\rule{\linewidth}{1pt}]
+
+\titleformat{\subsection}
+  {\large\bfseries\color{violetfonce}}
+  {\thesubsection}{0.5em}{}
+
+\titleformat{\subsubsection}
+  {\normalsize\bfseries\color{violetaccent}}
+  {\thesubsubsection}{0.5em}{}
+
+\titlespacing*{\section}{0pt}{1.5em}{0.8em}
+\titlespacing*{\subsection}{0pt}{1.2em}{0.5em}
+\titlespacing*{\subsubsection}{0pt}{1em}{0.4em}
+
+% ============================================
+% EN-TÊTES
+% ============================================
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{violetprincipal}\textbf{\leftmark}}
+\fancyhead[R]{\small\color{violetprincipal}\thepage/\pageref{LastPage}}
+\fancyfoot[C]{\small\color{violetclair}\textit{Rapport de projet}}
+\renewcommand{\headrulewidth}{0.8pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{violetprincipal}\leaders\hrule height \headrulewidth\hfill}}
+\renewcommand{\footrulewidth}{0.4pt}
+\renewcommand{\footrule}{\hbox to\headwidth{\color{violetclair}\leaders\hrule height \footrulewidth\hfill}}
+\fancypagestyle{plain}{
+    \fancyhf{}
+    \fancyfoot[C]{\small\color{violetclair}\thepage}
+    \renewcommand{\headrulewidth}{0pt}
+    \renewcommand{\footrulewidth}{0pt}
+}
+
+% ============================================
+% BOÎTES
+% ============================================
+\newtcolorbox{objectifbox}{
+    colback=violettresclair, colframe=violetprincipal,
+    boxrule=0.8pt, arc=3pt, left=8pt, right=8pt, top=6pt, bottom=6pt,
+    fonttitle=\bfseries\color{white}, title={\faBullseye\ Objectif},
+    coltitle=white,
+    attach boxed title to top left={xshift=10pt, yshift=-\tcboxedtitleheight/2},
+    boxed title style={colback=violetprincipal, arc=2pt},
+}
+
+\newtcolorbox{principebox}[1][]{
+    colback=white, colframe=violetaccent,
+    boxrule=0.6pt, arc=2pt, left=8pt, right=8pt, top=6pt, bottom=6pt,
+    title={#1}, fonttitle=\bfseries\color{white}, coltitle=white,
+    attach boxed title to top left={xshift=10pt, yshift=-\tcboxedtitleheight/2},
+    boxed title style={colback=violetaccent, arc=2pt},
+}
+
+\newtcolorbox{infobox}{
+    colback=violettresclair, colframe=violetclair,
+    boxrule=0.5pt, arc=2pt, left=6pt, right=6pt, top=4pt, bottom=4pt,
+}
+
+\newtcolorbox{hypothesisbox}[1][]{
+    colback=violetaccent!10, colframe=violetaccent,
+    boxrule=0.6pt, arc=2pt, left=8pt, right=8pt, top=6pt, bottom=6pt,
+    title={\faQuestionCircle\ Hypothèse},
+    fonttitle=\bfseries\color{white}, coltitle=white,
+    attach boxed title to top left={xshift=10pt, yshift=-\tcboxedtitleheight/2},
+    boxed title style={colback=violetaccent, arc=2pt},
+}
+
+\newtcolorbox{criticalbox}[1][]{
+    colback=violetcritique!8, colframe=violetcritique,
+    boxrule=1pt, arc=3pt, left=8pt, right=8pt, top=6pt, bottom=6pt,
+    title={\faExclamationTriangle\ #1},
+    fonttitle=\bfseries\color{white}, coltitle=white,
+    attach boxed title to top left={xshift=10pt, yshift=-\tcboxedtitleheight/2},
+    boxed title style={colback=violetcritique, arc=2pt},
+}
+
+% ============================================
+% LISTES
+% ============================================
+\setlist[itemize]{leftmargin=1.2em, label=\textcolor{violetaccent}{\textbullet}, itemsep=0.2em}
+\setlist[enumerate]{leftmargin=1.5em, label=\textcolor{violetprincipal}{\textbf{\arabic*.}}, itemsep=0.2em}
+\newcommand{\thead}[1]{\textcolor{white}{\textbf{#1}}}
+
+% ============================================
+% DÉBUT
+% ============================================
+\begin{document}
+
+% --------------------------------------------
+% PAGE DE GARDE
+% --------------------------------------------
+\begin{titlepage}
+    \centering
+    \vspace*{0.5cm}
+    {\color{violetprincipal}\rule{\linewidth}{3pt}}
+    \vspace{0.8cm}
+    {\Large\color{violetclair}\textsc{Rapport de Projet}}\\[0.3cm]
+    {\large\color{violetfonce}Année universitaire --- Revue numérique associative}
+    \vspace{2cm}
+    {\Huge\bfseries\color{violetprincipal}
+    Un éditeur de documents\\[0.3cm]
+    partagé\par}
+    \vspace{1cm}
+    {\color{violetaccent}\rule{0.6\linewidth}{1.5pt}}
+    \vspace{1cm}
+    \begin{minipage}{0.85\linewidth}
+        \centering
+        \large\color{violetfonce}
+        \textit{Conception et réalisation d'une application web de rédaction collaborative et de distribution documentaire contrôlée}
+    \end{minipage}
+    \vspace{2cm}
+    \begin{tcolorbox}[
+        colback=violettresclair, colframe=violetprincipal,
+        boxrule=1pt, arc=5pt, width=0.85\linewidth,
+        halign=center, top=10pt, bottom=10pt
+    ]
+        \centering
+        \color{violetfonce}\textbf{Problématique centrale}\\[0.4cm]
+        \itshape\color{black}
+        Concevoir un système de rédaction collaborative et de distribution
+        documentaire garantissant la cohérence des données, le respect des
+        règles de gestion et la maîtrise des accès.
+    \end{tcolorbox}
+    \vfill
+    {\color{violetprincipal}\rule{\linewidth}{2pt}}
+    \vspace{0.4cm}
+    {\large\color{violetprincipal}\textbf{Association --- Revue numérique annuelle}}
+    \vspace{0.3cm}
+    {\color{violetclair}\today}
+\end{titlepage}
+
+% --------------------------------------------
+% PAGES LIMINAIRES
+% --------------------------------------------
+\pagenumbering{roman}
+\setcounter{page}{1}
+
+\chapter*{Résumé}
+\addcontentsline{toc}{chapter}{Résumé}
+\markboth{Résumé}{Résumé}
+
+Ce rapport présente la conception d'une application web destinée à une association qui publie chaque année une revue numérique rédigée de manière collaborative par plusieurs centaines de rédacteurs. L'application permet la création, le partage et l'édition simultanée de documents textuels, la gestion des versions, ainsi que la distribution des documents au format PDF au moyen de liens de téléchargement dont le quota d'utilisation est strictement contrôlé.
+
+Le rapport identifie les acteurs, précise le périmètre fonctionnel, énonce les exigences fonctionnelles et non fonctionnelles, formalise les principes métier, puis présente l'analyse et la conception UML (cas d'utilisation, classes, activités, états-transitions). Deux contraintes sont identifiées comme critiques et non négociables : le respect strict du quota des liens de téléchargement, et la conservation de toute modification acceptée en édition concurrente.
+
+\vspace{0.5cm}
+\noindent\textbf{Mots-clés :} édition collaborative, distribution documentaire, PDF, quotas, concurrence, cohérence des données, UML, AWS.
+
+\tableofcontents
+\addcontentsline{toc}{chapter}{Table des matières}
+
+\listoffigures
+\addcontentsline{toc}{chapter}{Table des figures}
+
+\listoftables
+\addcontentsline{toc}{chapter}{Liste des tableaux}
+
+\clearpage
+
+% --------------------------------------------
+% CORPS
+% --------------------------------------------
+\pagenumbering{arabic}
+\setcounter{page}{1}
+
+% ============================================
+
+\input{chapitres/01_presentation.tex}
+\input{chapitres/02_acteurs.tex}
+\input{chapitres/03_perimetre.tex}
+\input{chapitres/04_exigences_fonctionnelles.tex}
+\input{chapitres/05_exigences_non_fonctionnelles.tex}
+\input{chapitres/06_principes_metier.tex}
+\input{chapitres/07_analyse_conception.tex}
+\input{chapitres/08_architecture_aws.tex}
+\input{chapitres/09_architecture_logicielle.tex}
+\input{chapitres/10_conclusion.tex}
+
+\end{document}

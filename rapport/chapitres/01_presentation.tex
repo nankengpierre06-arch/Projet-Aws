@@ -1,0 +1,49 @@
+\chapter{Présentation générale du projet}
+
+\section{Contexte}
+
+Une association publie chaque année une revue numérique rédigée de manière collaborative par plusieurs centaines de rédacteurs. La rédaction d'un même document peut impliquer plusieurs personnes travaillant simultanément. L'association souhaite disposer d'une application permettant de faciliter cette collaboration, de conserver l'historique des modifications et de distribuer les documents sous forme de fichiers PDF.
+
+\begin{infobox}
+L'application doit également permettre de contrôler la distribution des documents et de respecter les quotas d'écriture attribués aux rédacteurs.
+\end{infobox}
+
+\section{Problématique}
+
+La mise en place d'un éditeur collaboratif soulève plusieurs difficultés :
+
+\begin{itemize}
+    \item Permettre à plusieurs rédacteurs de modifier simultanément un même document sans perdre leurs modifications.
+    \item Garantir que les participants convergent vers un même contenu.
+    \item Permettre de consulter et de restaurer les versions précédentes d'un document.
+    \item Générer des liens de téléchargement dont le nombre d'utilisations est strictement limité.
+    \item Garantir que les téléchargements correspondent à un état complet et cohérent du document.
+    \item Contrôler les quotas quotidiens d'écriture, y compris lorsque le rédacteur utilise plusieurs appareils.
+    \item Assurer la continuité du service pendant les périodes de forte affluence.
+\end{itemize}
+
+\begin{objectifbox}
+Concevoir un système de rédaction collaborative et de distribution documentaire qui garantit la cohérence des données, le respect des règles de gestion et la maîtrise des accès.
+\end{objectifbox}
+
+\section{Objectif général}
+
+Concevoir et réaliser une application web permettant à plusieurs rédacteurs de créer, partager et modifier collaborativement des documents textuels, de gérer leurs versions et de distribuer ces documents en PDF au moyen de liens de téléchargement contrôlés.
+
+\section{Objectifs spécifiques}
+
+\begin{enumerate}
+    \item Créer des documents textuels.
+    \item Partager les documents avec d'autres rédacteurs.
+    \item Modifier un document simultanément à plusieurs.
+    \item Visualiser les modifications en quasi-temps réel.
+    \item Identifier les participants présents et leur position d'écriture.
+    \item Consulter et restaurer les versions antérieures.
+    \item Créer des liens de téléchargement avec quota défini.
+    \item Générer le PDF correspondant à l'état retenu du document.
+    \item Contrôler les quotas quotidiens d'écriture.
+    \item Détecter les tentatives de contournement et bloquer temporairement.
+    \item Permettre à l'association de consulter l'état du système.
+    \item Notifier le créateur d'un lien à la consommation de sa dernière utilisation.
+\end{enumerate}
+

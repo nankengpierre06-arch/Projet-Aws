@@ -1,0 +1,122 @@
+<?xml version="1.0" ?>
+<mxfile host="app.diagrams.net" modified="2026-10-25T07:00:00.000Z" agent="Antigravity" version="24.0.0" type="device">
+  <diagram id="software-architecture-clean" name="Architecture Logicielle">
+    <mxGraphModel dx="1400" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1550" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="title_box" value="&lt;b&gt;ARCHITECTURE LOGICIELLE ET FLUX DE COMMUNICATION&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:12px;color:#64748B;'&gt;Vue épurée des composants logiciels : Frontend SPA, Reverse Proxy, Backend Applicatif et Services de Persistance&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#CBD5E1;align=center;fontSize=15;fontStyle=1;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="40" y="25" width="1460" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="act_writers" value="&lt;b&gt;300 Rédacteurs Actifs&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px;color:#6B21A8;'&gt;• Édition collaborative temps réel&lt;br&gt;• Connexion persistante WSS&lt;br&gt;• Quota 10k caractères/jour (C4)&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FAF5FF;strokeColor=#A855F7;strokeWidth=1.5;align=center;fontSize=11;spacingTop=22;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="40" y="140" width="180" height="105" as="geometry"/>
+        </mxCell>
+        <mxCell id="ico_writers" value="" style="shape=image;html=1;image=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjN0MzQUVEIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgPHBhdGggZD0iTTE2IDIxdi0yYTQgNCAwIDAgMC00LTRINmE0IDQgMCAwIDAtNCA0djIiLz48Y2lyY2xlIGN4PSI5IiBjeT0iNyIgcj0iNCIvPjxwYXRoIGQ9Ik0yMiAyMXYtMmE0IDQgMCAwIDAtMy0zLjg3Ii8+PHBhdGggZD0iTTE2IDMuMTNhNCA0IDAgMCAxIDAgNy43NSIvPgo8L3N2Zz4=;aspect=fixed;" parent="act_writers" vertex="1">
+          <mxGeometry x="76" y="6" width="28" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="act_visitors" value="&lt;b&gt;15 000 Visiteurs (Pic)&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px;color:#1E40AF;'&gt;• Pic de parution (80% en 1 min)&lt;br&gt;• Compétition pour 500 places (C1)&lt;br&gt;• Téléchargement direct du PDF&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#EFF6FF;strokeColor=#3B82F6;strokeWidth=1.5;align=center;fontSize=11;spacingTop=22;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="40" y="340" width="180" height="105" as="geometry"/>
+        </mxCell>
+        <mxCell id="ico_visitors" value="" style="shape=image;html=1;image=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMjU2M0VCIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgPHBhdGggZD0iTTIxIDE1djRhMiAyIDAgMCAxLTIgMkg1YTIgMiAwIDAgMS0yLTJ2LTQiLz48cG9seWxpbmUgcG9pbnRzPSI3IDEwIDEyIDE1IDE3IDEwIi8+PGxpbmUgeDE9IjEyIiB5MT0iMTUiIHgyPSIxMiIgeTI9IjMiLz4KPC9zdmc+;aspect=fixed;" parent="act_visitors" vertex="1">
+          <mxGeometry x="76" y="6" width="28" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="act_creator" value="&lt;b&gt;Créateur du Document&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px;color:#D97706;'&gt;• Rédacteur administrateur du lien&lt;br&gt;• Réception de l'alerte par email (C6)&lt;/font&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#F59E0B;strokeWidth=1.5;align=center;fontSize=11;spacingTop=22;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="40" y="550" width="180" height="95" as="geometry"/>
+        </mxCell>
+        <mxCell id="ico_creator" value="" style="shape=image;html=1;image=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjRDk3NzA2IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgPHBhdGggZD0iTTIwIDIxdi0yYTQgNCAwIDAgMC00LTRIOGE0IDQgMCAwIDAtNCA0djIiLz48Y2lyY2xlIGN4PSIxMiIgY3k9IjciIHI9IjQiLz4KPC9zdmc+;aspect=fixed;" parent="act_creator" vertex="1">
+          <mxGeometry x="76" y="6" width="28" height="28" as="geometry"/>
+        </mxCell>
+        <mxCell id="fe_card" value="&lt;b&gt;APPLICATION WEB FRONTEND (SPA)&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px;color:#0284C7;'&gt;React 18 • Vite • Quill.js • Yjs&lt;/font&gt;&lt;hr style='border:0.5px solid #BAE6FD;'&gt;&lt;div align='left' style='font-size:10px;color:#334155;line-height:1.4;'&gt;• &lt;b&gt;Interface réactive :&lt;/b&gt; Découpage en composants modulaires et réconciliation DOM virtuelle ultra-rapide.&lt;br&gt;• &lt;b&gt;Surface de saisie :&lt;/b&gt; Éditeur Quill.js avec formalisme Delta textuel sans conflit (y-quill).&lt;br&gt;• &lt;b&gt;Consensus CRDT :&lt;/b&gt; Moteur Yjs assurant la convergence mathématique sans verrou (C2).&lt;br&gt;• &lt;b&gt;Présence en direct :&lt;/b&gt; Protocole Awareness éphémère (curseurs et avatars des collaborateurs).&lt;br&gt;• &lt;b&gt;Contrôle du quota :&lt;/b&gt; Garde-fou client bloquant la frappe à 10 000 car./jour (C4).&lt;br&gt;• &lt;b&gt;Machine à états :&lt;/b&gt; Gestion déterministe des flux de téléchargement (Attente / Prêt / Épuisé).&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#F0F9FF;strokeColor=#0284C7;strokeWidth=2;align=center;spacingTop=10;spacingLeft=12;spacingRight=12;fontSize=11;fontStyle=0;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="270" y="140" width="240" height="305" as="geometry"/>
+        </mxCell>
+        <mxCell id="fe_logo_react" value="" style="shape=image;html=1;image=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0xMS41IC0xMC4yMyAyMyAyMC40NiI+CiAgPGNpcmNsZSBjeD0iMCIgY3k9IjAiIHI9IjIuMDUiIGZpbGw9IiM2MWRhZmIiLz4KICA8ZyBzdHJva2U9IiM2MWRhZmIiIHN0cm9rZS13aWR0aD0iMSIgZmlsbD0ibm9uZSI+CiAgICA8ZWxsaXBzZSByeD0iMTEiIHJ5PSI0LjIiLz4KICAgIDxlbGxpcHNlIHJ4PSIxMSIgcnk9IjQuMiIgdHJhbnNmb3JtPSJyb3RhdGUoNjApIi8+CiAgICA8ZWxsaXBzZSByeD0iMTEiIHJ5PSI0LjIiIHRyYW5zZm9ybT0icm90YXRlKDEyMCkiLz4KICA8L2c+Cjwvc3ZnPg==;aspect=fixed;" parent="fe_card" vertex="1">
+          <mxGeometry x="12" y="8" width="26" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="fe_logo_quill" value="" style="shape=image;html=1;image=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOTMzM0VBIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgPHBhdGggZD0iTTIwLjI0IDEyLjI0YTYgNiAwIDAgMC04LjQ5LTguNDlMNSAxMC41VjE5aDguNXoiLz4KICA8bGluZSB4MT0iMTYiIHkxPSI4IiB4Mj0iMiIgeTI9IjIyIi8+CiAgPGxpbmUgeDE9IjE3LjUiIHkxPSIxNSIgeDI9IjkiIHkyPSIxNSIvPgo8L3N2Zz4=;aspect=fixed;" parent="fe_card" vertex="1">
+          <mxGeometry x="44" y="9" width="22" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="fe_logo_yjs" value="" style="shape=image;html=1;image=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NiIgZmlsbD0iIzJFN0QzMiIvPgogIDxwYXRoIGQ9Ik0zMCAzMCBMNTAgNjAgTDcwIDMwIE01MCA2MCBMNTAgODUiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSIxMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBmaWxsPSJub25lIi8+CiAgPGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iOCIgZmlsbD0iIzgxQzc4NCIvPgogIDxjaXJjbGUgY3g9IjcwIiBjeT0iMzAiIHI9IjgiIGZpbGw9IiM4MUM3ODQiLz4KICA8Y2lyY2xlIGN4PSI1MCIgY3k9Ijg1IiByPSI4IiBmaWxsPSIjODFDNzg0Ii8+Cjwvc3ZnPg==;aspect=fixed;" parent="fe_card" vertex="1">
+          <mxGeometry x="72" y="9" width="22" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="proxy_card" value="&lt;b&gt;SERVEUR FRONTAL / REVERSE PROXY&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px;color:#16A34A;'&gt;Nginx Engine (Ports 80 &amp; 443)&lt;/font&gt;&lt;hr style='border:0.5px solid #BBF7D0;'&gt;&lt;div align='left' style='font-size:10px;color:#334155;line-height:1.4;'&gt;• &lt;b&gt;Terminaison TLS/SSL :&lt;/b&gt; Chiffrement HTTPS &amp; WSS de bout en bout.&lt;br&gt;• &lt;b&gt;Aiguillage protocolaire :&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;- &lt;code&gt;/ws&lt;/code&gt; : Surclassement WebSocket vers le port 1234.&lt;br&gt;&amp;nbsp;&amp;nbsp;- &lt;code&gt;/api&lt;/code&gt; : Requêtes REST vers le port 8000.&lt;br&gt;• &lt;b&gt;Compression Gzip :&lt;/b&gt; Accélération de la distribution du bundle statique.&lt;br&gt;• &lt;b&gt;Protection &amp; Tampon :&lt;/b&gt; Maintien des connexions lentes (Keep-Alive).&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#F0FDF4;strokeColor=#16A34A;strokeWidth=2;align=center;spacingTop=10;spacingLeft=12;spacingRight=12;fontSize=11;fontStyle=0;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="550" y="140" width="210" height="305" as="geometry"/>
+        </mxCell>
+        <mxCell id="proxy_logo" value="" style="shape=image;html=1;image=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8cG9seWdvbiBwb2ludHM9IjUwLDUgOTIsMjcgOTIsNzMgNTAsOTUgOCw3MyA4LDI3IiBmaWxsPSIjMDA5NjM5Ii8+CiAgPHRleHQgeD0iNTAiIHk9IjY4IiBmb250LWZhbWlseT0iQXJpYWwsIEhlbHZldGljYSwgc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjkwMCIgZm9udC1zaXplPSI1NCIgZmlsbD0iI0ZGRkZGRiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+TjwvdGV4dD4KPC9zdmc+;aspect=fixed;" parent="proxy_card" vertex="1">
+          <mxGeometry x="12" y="8" width="26" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="be_card" value="&lt;b&gt;SERVEUR APPLICATIF &amp; MÉTIER&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px;color:#CA8A04;'&gt;Node.js LTS • Express • y-websocket • Typst&lt;/font&gt;&lt;hr style='border:0.5px solid #FEF08A;'&gt;&lt;div align='left' style='font-size:10px;color:#334155;line-height:1.4;'&gt;• &lt;b&gt;Service Collab Temps Réel (y-websocket) :&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Maintien de 300 sockets en mémoire vive (&lt; 150 Mo RAM). Fusion immédiate et diffusion des deltas Yjs.&lt;br&gt;• &lt;b&gt;Gatekeeper d'Admission REST (Express) :&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Contrôleur haute vélocité sous pic. Arbitrage atomique de l'attribution des 500 places (C1) et rejet 410 en &amp;lt; 15 ms.&lt;br&gt;• &lt;b&gt;Worker de Rendu PDF (Typst natif) :&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Consommateur asynchrone découplé. Rendu ultra-rapide en &amp;lt; 80 ms (RAM &amp;lt; 40 Mo) sans bloquer l'Event Loop.&lt;br&gt;• &lt;b&gt;Générateur d'Accès Sécurisé :&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Génération locale d'URLs signées temporaires (5 min).&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FEFCE8;strokeColor=#CA8A04;strokeWidth=2;align=center;spacingTop=10;spacingLeft=12;spacingRight=12;fontSize=11;fontStyle=0;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="800" y="140" width="270" height="305" as="geometry"/>
+        </mxCell>
+        <mxCell id="be_logo_node" value="" style="shape=image;html=1;image=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTYgMjg5Ij4KICA8cGF0aCBmaWxsPSIjNTM5RTQzIiBkPSJNMTI4IDBMOS40IDY4LjR2MTUyLjJMMTI4IDI4OWwxMTguNi02OC40VjY4LjRMMTI4IDB6Ii8+CiAgPHBhdGggZmlsbD0iIzIyMjIyMiIgZD0iTTEyOCAzNUwzNSA4OHYxMTNsOTMgNTQgOTMtNTRWODhMMTI4IDM1eiIvPgogIDxwYXRoIGZpbGw9IiM1MzlFNDMiIGQ9Ik0xMTAgODVoMzZ2MTE5aC0zNlY4NXoiLz4KPC9zdmc+;aspect=fixed;" parent="be_card" vertex="1">
+          <mxGeometry x="12" y="8" width="26" height="26" as="geometry"/>
+        </mxCell>
+        <mxCell id="be_logo_typst" value="" style="shape=image;html=1;image=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIyIiBmaWxsPSIjMjM5REFEIi8+CiAgPHBhdGggZD0iTTI0IDMyIEg3NiBWNDYgSDU3IFY3OCBINDMgVjQ2IEgyNCBaIiBmaWxsPSIjRkZGRkZGIi8+Cjwvc3ZnPg==;aspect=fixed;" parent="be_card" vertex="1">
+          <mxGeometry x="42" y="8" width="24" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="db_card" value="&lt;b&gt;BASE DE DONNÉES NoSQL&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px;color:#4338CA;'&gt;Modèle Clé-Valeur &amp; Documents (Partitionné)&lt;/font&gt;&lt;hr style='border:0.5px solid #C7D2FE;'&gt;&lt;div align='left' style='font-size:10px;color:#334155;line-height:1.3;'&gt;• &lt;b&gt;Compteur Atomique (C1) :&lt;/b&gt; Décrément conditionnel &lt;code&gt;SET rem = rem - 1 WHERE rem &amp;gt; 0&lt;/code&gt; en temps constant $O(1)$ (&amp;lt; 10 ms) sans verrou SQL.&lt;br&gt;• &lt;b&gt;Journal d'Édition (C2 &amp; C3) :&lt;/b&gt; Enregistrement immuable (Append-Only) des deltas et instantanés.&lt;br&gt;• &lt;b&gt;Quotas Quotidiens (C4) :&lt;/b&gt; Cumul des caractères par rédacteur.&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#4338CA;strokeWidth=1.5;align=center;spacingTop=8;spacingLeft=10;spacingRight=10;fontSize=11;fontStyle=0;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="1110" y="100" width="390" height="125" as="geometry"/>
+        </mxCell>
+        <mxCell id="ico_db" value="" style="shape=image;html=1;image=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNDMzOENBIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgPGVsbGlwc2UgY3g9IjEyIiBjeT0iNSIgcng9IjkiIHJ5PSIzIi8+CiAgPHBhdGggZD0iTTIxIDEyYzAgMS42Ni00IDMtOSAzcy05LTEuMzQtOS0zIi8+CiAgPHBhdGggZD0iTTMgNXYxNGMwIDEuNjYgNCAzIDkgM3M5LTEuMzQgOS0zVjUiLz4KPC9zdmc+;aspect=fixed;" parent="db_card" vertex="1">
+          <mxGeometry x="10" y="6" width="24" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="queue_card" value="&lt;b&gt;FILE DE MESSAGES (MESSAGE BROKER)&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px;color:#BE185D;'&gt;Tampon Asynchrone &amp; Découplage de Charge&lt;/font&gt;&lt;hr style='border:0.5px solid #FBCFE8;'&gt;&lt;div align='left' style='font-size:10px;color:#334155;line-height:1.3;'&gt;• &lt;b&gt;Lissage de Charge (C5) :&lt;/b&gt; Encaisse les 500 ordres simultanés au pic sans saturer le processeur du serveur applicatif.&lt;br&gt;• &lt;b&gt;Traitement Fiable :&lt;/b&gt; Dépilage par le Worker avec acquittement et délai de visibilité garantissant zéro perte de tâche.&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FDF2F8;strokeColor=#BE185D;strokeWidth=1.5;align=center;spacingTop=8;spacingLeft=10;spacingRight=10;fontSize=11;fontStyle=0;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="1110" y="250" width="390" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="ico_queue" value="" style="shape=image;html=1;image=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjQkUxODVEIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgPHBhdGggZD0iTTQgNmgxNk00IDEyaDE2TTQgMThoMTYiLz4KICA8cG9seWxpbmUgcG9pbnRzPSIxNiAxMCAyMCAxMiAxNiAxNCIvPgo8L3N2Zz4=;aspect=fixed;" parent="queue_card" vertex="1">
+          <mxGeometry x="10" y="6" width="24" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="storage_card" value="&lt;b&gt;STOCKAGE D'OBJETS (OBJECT STORAGE)&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px;color:#047857;'&gt;Hébergement Distribué des Artéfacts Binaires&lt;/font&gt;&lt;hr style='border:0.5px solid #A7F3D0;'&gt;&lt;div align='left' style='font-size:10px;color:#334155;line-height:1.3;'&gt;• &lt;b&gt;Conservation des PDF :&lt;/b&gt; Dépôt immuable des revues par clé de version.&lt;br&gt;• &lt;b&gt;Téléchargement Direct Déporté (C5) :&lt;/b&gt; Les 500 visiteurs téléchargent le PDF directement depuis le stockage via URL signée sans solliciter la bande passante du serveur.&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#047857;strokeWidth=1.5;align=center;spacingTop=8;spacingLeft=10;spacingRight=10;fontSize=11;fontStyle=0;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="1110" y="385" width="390" height="115" as="geometry"/>
+        </mxCell>
+        <mxCell id="ico_storage" value="" style="shape=image;html=1;image=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMDQ3ODU3IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9IjIwIiBoZWlnaHQ9IjgiIHJ4PSIyIiByeT0iMiIvPgogIDxyZWN0IHg9IjIiIHk9IjE0IiB3aWR0aD0iMjAiIGhlaWdodD0iOCIgcng9IjIiIHJ5PSIyIi8+CiAgPGxpbmUgeDE9IjYiIHkxPSI2IiB4Mj0iNi4wMSIgeTI9IjYiLz4KICA8bGluZSB4MT0iNiIgeTE9IjE4IiB4Mj0iNi4wMSIgeTI9IjE4Ii8+Cjwvc3ZnPg==;aspect=fixed;" parent="storage_card" vertex="1">
+          <mxGeometry x="10" y="6" width="24" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="notif_card" value="&lt;b&gt;SERVICE DE NOTIFICATION (EMAIL DISPATCHER)&lt;/b&gt;&lt;br&gt;&lt;font style='font-size:10px;color:#D97706;'&gt;Alerte Automatique Découplée&lt;/font&gt;&lt;hr style='border:0.5px solid #FDE68A;'&gt;&lt;div align='left' style='font-size:10px;color:#334155;line-height:1.3;'&gt;• &lt;b&gt;Déclencheur Seuil Zéro (C6) :&lt;/b&gt; Notifie instantanément par email le créateur du document dès que le stock de téléchargements restants passe à 0.&lt;/div&gt;" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFBEB;strokeColor=#D97706;strokeWidth=1.5;align=center;spacingTop=8;spacingLeft=10;spacingRight=10;fontSize=11;fontStyle=0;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="1110" y="525" width="390" height="95" as="geometry"/>
+        </mxCell>
+        <mxCell id="ico_bell" value="" style="shape=image;html=1;image=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjRDk3NzA2IiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgPHBhdGggZD0iTTE4IDhBNiA2IDAgMCAwIDYgOGMwIDctMyA5LTMgOWgxOHMtMy0yLTMtOSIvPgogIDxwYXRoIGQ9Ik0xMy43MyAyMWEyIDIgMCAwIDEtMy40NiAwIi8+Cjwvc3ZnPg==;aspect=fixed;" parent="notif_card" vertex="1">
+          <mxGeometry x="10" y="6" width="24" height="24" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_w_fe" value="&lt;b&gt;WSS&lt;/b&gt;&lt;br&gt;Session collaborative" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;strokeColor=#A855F7;strokeWidth=2.5;fontColor=#6B21A8;" parent="1" edge="1" source="act_writers" target="fe_card">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fe_proxy_ws" value="&lt;b&gt;WSS (Port 443)&lt;/b&gt;&lt;br&gt;URI &lt;code&gt;/ws&lt;/code&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;strokeColor=#A855F7;strokeWidth=2.5;fontColor=#6B21A8;" parent="1" edge="1" source="fe_card" target="proxy_card">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_proxy_be_ws" value="&lt;b&gt;Proxy WSS&lt;/b&gt;&lt;br&gt;Port interne 1234" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;strokeColor=#A855F7;strokeWidth=2.5;fontColor=#6B21A8;" parent="1" edge="1" source="proxy_card" target="be_card">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_v_fe" value="&lt;b&gt;HTTPS GET&lt;/b&gt;&lt;br&gt;Lien de téléchargement" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;strokeColor=#3B82F6;strokeWidth=2.5;fontColor=#1E40AF;" parent="1" edge="1" source="act_visitors" target="fe_card">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_fe_proxy_api" value="&lt;b&gt;HTTPS (Port 443)&lt;/b&gt;&lt;br&gt;URI &lt;code&gt;/api/download&lt;/code&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;strokeColor=#3B82F6;strokeWidth=2.5;fontColor=#1E40AF;" parent="1" edge="1" source="fe_card" target="proxy_card">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_proxy_be_api" value="&lt;b&gt;Proxy REST&lt;/b&gt;&lt;br&gt;Port interne 8000" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;strokeColor=#3B82F6;strokeWidth=2.5;fontColor=#1E40AF;" parent="1" edge="1" source="proxy_card" target="be_card">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_be_db" value="&lt;b&gt;1. Écriture Append-Only&lt;/b&gt; (C2) &amp; &lt;b&gt;Décrément atomique&lt;/b&gt; (C1 : &lt;code&gt;rem &amp;gt; 0&lt;/code&gt;)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;strokeColor=#4338CA;strokeWidth=2;fontColor=#4338CA;exitX=1;exitY=0.2;entryX=0;entryY=0.5;" parent="1" edge="1" source="be_card" target="db_card">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_be_queue" value="&lt;b&gt;2. Publication ordre de rendu PDF&lt;/b&gt; (si premier téléchargement)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;strokeColor=#BE185D;strokeWidth=2;fontColor=#BE185D;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" parent="1" edge="1" source="be_card" target="queue_card">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_queue_be" value="&lt;b&gt;3. Dépilage asynchrone (Worker Typst)&lt;/b&gt;&lt;br&gt;Compilation haute vitesse &amp;lt; 80 ms" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;strokeColor=#D97706;strokeWidth=2;fontColor=#D97706;dashed=1;exitX=0;exitY=0.8;entryX=1;entryY=0.7;" parent="1" edge="1" source="queue_card" target="be_card">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_be_storage" value="&lt;b&gt;4. Dépôt de l'artéfact PDF&lt;/b&gt; dans le Stockage d'Objets" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;strokeColor=#047857;strokeWidth=2;fontColor=#047857;exitX=1;exitY=0.85;entryX=0;entryY=0.5;" parent="1" edge="1" source="be_card" target="storage_card">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_be_notif" value="&lt;b&gt;5. Seuil zéro atteint&lt;/b&gt; (C6 : &lt;code&gt;rem == 0&lt;/code&gt;)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;strokeColor=#D97706;strokeWidth=2;fontColor=#D97706;exitX=0.9;exitY=1;entryX=0;entryY=0.5;" parent="1" edge="1" source="be_card" target="notif_card">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_notif_creator" value="&lt;b&gt;6. Envoi Email 'Dernier exemplaire attribué'&lt;/b&gt; au rédacteur créateur (C6)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;strokeColor=#D97706;strokeWidth=2;fontColor=#D97706;exitX=0;exitY=0.75;entryX=1;entryY=0.5;" parent="1" edge="1" source="notif_card" target="act_creator">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_direct_download" value="&lt;b&gt;7. TÉLÉCHARGEMENT DIRECT DÉPORTÉ (URL signée temporaire)&lt;/b&gt;&lt;br&gt;&lt;font style='color:#059669;'&gt;100% de la bande passante binaire servie directement par le Stockage d'Objets (Zéro charge réseau sur le serveur applicatif)&lt;/font&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;fontSize=10;strokeColor=#059669;strokeWidth=3;dashed=1;fontColor=#059669;exitX=0;exitY=0.85;entryX=0.5;entryY=1;" parent="1" edge="1" source="storage_card" target="act_visitors">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

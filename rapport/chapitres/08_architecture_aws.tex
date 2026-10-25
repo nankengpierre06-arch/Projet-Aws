@@ -1,0 +1,131 @@
+\chapter{Architecture Cloud AWS}
+
+\section{Présentation générale de l'architecture retenue}
+
+Pour répondre aux contraintes du projet tout en garantissant une faisabilité totale dans les délais impartis, l'infrastructure cloud retenue repose sur une \textbf{architecture à deux voies spécialisées}, déployée dans une région unique (\texttt{eu-west-3} Paris ou \texttt{eu-north-1} Stockholm) et strictement contenue dans le périmètre de l'offre gratuite et des crédits alloués :
+
+\begin{enumerate}
+    \item \textbf{La voie d'édition collaborative (temps réel persistant) :} dédiée aux 300 rédacteurs actifs, caractérisée par des connexions longues et de multiples échanges de petits deltas textuels avec une latence réseau minimale.
+    \item \textbf{La voie de distribution documentaire (haute performance sans état) :} dédiée à l'absorption du pic de 15\,000 visiteurs, caractérisée par un filtrage immédiat des accès, une réservation atomique stricte des places autorisées, un traitement asynchrone de la compilation et une livraison déléguée des flux binaires.
+\end{enumerate}
+
+Cette conception garantit un cloisonnement strict des ressources : un afflux massif de visiteurs sur les liens de téléchargement ne dégrade en aucun cas la réactivité de l'éditeur partagé pour les rédacteurs en cours de travail.
+
+\section{Justification et rôle de chaque service AWS}
+
+Chaque service utilisé a été sélectionné pour ses propriétés intrinsèques et configuré selon un rôle précis, aligné avec les bonnes pratiques d'ingénierie cloud.
+
+\subsection{Amazon EC2 : hébergement de l'application et de la collaboration temps réel}
+
+\textbf{Configuration :} Une instance de type \texttt{t3.micro} sous Amazon Linux 2023, protégée par un groupe de sécurité (\emph{Security Group}) restreint.
+
+\textbf{Rôle au sein de l'architecture :}
+\begin{itemize}
+    \item \textbf{Reverse-Proxy frontal Nginx :} Écoute sur les ports 80 (redirection HTTPS) et 443. Il assure la terminaison TLS/SSL, la compression des flux statiques, et route le trafic soit vers l'API HTTP locale, soit vers le serveur de sockets avec gestion des en-têtes de mise à niveau de protocole (\texttt{Upgrade: websocket}).
+    \item \textbf{Moteur de collaboration temps réel (Node.js / y-websocket) :} Maintient les connexions WebSockets persistantes des rédacteurs. Une instance de cette classe prend en charge sans difficulté plusieurs milliers de sockets en mémoire vive avec une consommation inférieure à 200 Mo de mémoire et une latence de propagation inter-clients inférieure à 5 ms.
+    \item \textbf{Supervision locale systemd :} L'application et le serveur de collaboration sont exécutés sous forme de services gérés par \texttt{systemd} avec la directive \texttt{Restart=always}, assurant la reprise automatique sans intervention humaine en cas d'anomalie transitoire.
+\end{itemize}
+
+\textbf{Justification de ce choix :}
+L'édition collaborative temps réel nécessite le maintien d'un état en mémoire et une diffusion instantanée aux pairs connectés. L'utilisation d'un serveur d'application persistant sur EC2 évite tout surcoût d'invocation par message et permet l'exploitation directe des protocoles de synchronisation CRDT standards de l'industrie.
+
+\subsection{Amazon DynamoDB : persistance d'état et décompte atomique}
+
+\textbf{Configuration :} Table unique (\emph{Single-Table Design}) provisionnée en mode de capacité à la demande (\emph{On-Demand}), minimisant les coûts et absorbant instantanément les pics de débit.
+
+\textbf{Rôle au sein de l'architecture :}
+\begin{itemize}
+    \item \textbf{Résolution formelle de la contrainte C1 (Exactement $N$ téléchargements) :} DynamoDB stocke l'élément représentant le lien de téléchargement avec son solde de places disponibles. L'attribution d'une place s'effectue via une opération atomique d'écriture conditionnelle :
+    \begin{equation}
+        \mathbf{SET} \quad \text{places\_restantes} = \text{places\_restantes} - 1 \quad \mathbf{WHERE} \quad \text{places\_restantes} > 0
+    \end{equation}
+    Cette instruction est exécutée de façon strictement sérialisée au cœur de la couche de réplication de stockage d'AWS. Même sous un afflux de 500 requêtes frappant la même milliseconde, les accès concurrents sont arbitrés sans verrou bloquant applicatif. Lorsque le compteur atteint zéro, toute requête suivante déclenche immédiatement l'exception \texttt{ConditionalCheckFailedException}.
+    \item \textbf{Application stricte du crédit d'écriture (C4) :} Le cumul des caractères insérés par chaque rédacteur est incrémenté de façon atomique sur un enregistrement dont la clé intègre la date du jour (\texttt{USER\#<email>}, \texttt{CREDIT\#<YYYY-MM-DD>}), garantissant un décompte unifié même en cas de sessions multi-appareils simultanées.
+    \item \textbf{Journal des révisions en ajout seul (Append-Only Log) :} Chaque delta textuel accepté est persisté comme un enregistrement immuable indexé par un numéro de séquence strictement croissant, assurant la traçabilité intégrale de l'historique et la non-régression du document.
+\end{itemize}
+
+\textbf{Justification de ce choix :}
+Le modèle NoSQL clé-valeur de DynamoDB élimine la contention de verrous sur table (\emph{lock contention}) propre aux bases relationnelles traditionnelles lors de rafales massives, garantissant une réponse en temps constant inférieur à 10 ms pour les refus de quota.
+
+\subsection{Amazon SQS : découplage asynchrone de la compilation documentaire}
+
+\textbf{Configuration :} Une file de messages standard nommée \texttt{pdf-generation-queue}, configurée avec un délai de visibilité (\emph{Visibility Timeout}) adapté à la durée de rendu du document (60 secondes).
+
+\textbf{Rôle au sein de l'architecture :}
+\begin{itemize}
+    \item \textbf{Lissage de charge (Load Leveling) :} Lors du pic de 15\,000 visiteurs, la conversion d'un texte riche en document PDF constitue une opération coûteuse en ressources CPU et mémoire (temps moyen de 500 ms à 1,5 s par génération). Tenter d'exécuter ces rendus de manière synchrone lors de l'arrivée massive des requêtes provoquerait un épuisement immédiat des ressources de la machine hôte.
+    \item \textbf{Mise en tampon des travaux admis :} Seules les requêtes ayant obtenu avec succès une place réservée lors du décrément atomique et dont la version cible n'a pas encore été compilée publient un message contenant l'identifiant du document et le numéro de séquence figé.
+    \item \textbf{Consommation maîtrisée :} Un processus de travail d'arrière-plan (\emph{Worker}) dépile les messages au rythme optimal de la machine, compile le document, dépose le fichier résultant sur S3, puis supprime le message de la file.
+\end{itemize}
+
+\textbf{Justification de ce choix :}
+SQS isole hermétiquement la logique d'admission rapide de la logique de calcul lourd, garantissant que l'application ne s'effondre jamais, même face à un pic d'accès cent fois supérieur à la capacité instantanée du moteur de rendu PDF.
+
+\subsection{Amazon S3 : stockage objet hautement disponible et URLs présignées}
+
+\textbf{Configuration :} Un bucket privé doté du chiffrement au repos par défaut (SSE-S3), avec blocage strict de tout accès public direct (\emph{Block Public Access} activé).
+
+\textbf{Rôle au sein de l'architecture :}
+\begin{itemize}
+    \item \textbf{Stockage durable des fichiers distribués :} Conservation des fichiers PDF compilés, organisés par clé déterministe combinant l'identifiant du document et son numéro de version :
+    \begin{equation}
+        \texttt{s3://revue-documents-storage/pdfs/doc\_<id>/v\_<version\_seq>.pdf}
+    \end{equation}
+    \item \textbf{Conservation des instantanés (Snapshots) :} Sauvegarde des états consolidés du document pour accélérer les opérations de reprise et de chargement initial.
+    \item \textbf{Délégation totale de la bande passante via URLs présignées :} C'est la clé de voûte de la résistance au pic. Lorsqu'un visiteur est autorisé à télécharger, l'application ne lit pas les mégaoctets du fichier pour les retransmettre à travers sa propre connexion réseau. Elle utilise les identifiants IAM locaux pour signer cryptographiquement une URL temporaire d'accès direct à S3, valable quelques minutes.
+\end{itemize}
+
+\textbf{Justification de ce choix :}
+La génération d'une URL présignée est une opération purement mathématique calculée en mémoire locale sans aucun appel réseau. Le navigateur du visiteur télécharge ensuite le fichier directement depuis l'infrastructure d'Amazon S3. Ainsi, la bande passante réseau et la mémoire du serveur applicatif demeurent totalement préservées.
+
+\subsection{Amazon SNS : notification événementielle découplée}
+
+\textbf{Configuration :} Un sujet standard (\emph{SNS Topic}) dédié aux alertes de distribution.
+
+\textbf{Rôle au sein de l'architecture :}
+Dès que la transaction DynamoDB constate que la place attribuée fait passer le compteur à zéro (\texttt{places\_restantes = 0}), l'application publie un message sur le sujet SNS. Ce dernier déclenche l'envoi immédiat d'un courriel électronique à l'adresse du créateur du lien.
+
+\textbf{Justification de ce choix :}
+L'expédition de courriels n'est pas bloquante pour le traitement de la requête du visiteur. L'intégration de SNS offre une fiabilité native sans dépendre d'un serveur SMTP local complexe à administrer et soumis aux filtres anti-spam.
+
+\subsection{AWS IAM : sécurité par le moindre privilège et IMDSv2}
+
+\textbf{Configuration :} Rôle d'instance EC2 attaché à la machine virtuelle sans aucune clé d'accès statique (\texttt{aws\_access\_key\_id} / \texttt{aws\_secret\_access\_key}) stockée sur le disque ou dans le code source.
+
+\textbf{Rôle au sein de l'architecture :}
+L'application interagit avec les services AWS via le service de métadonnées d'instance version 2 (IMDSv2), qui délivre des jetons d'authentification temporaires renouvelés automatiquement.
+
+\textbf{Justification de ce choix :}
+Ce mécanisme respecte rigoureusement la règle d'évaluation interdisant toute fuite d'identifiants dans les dépôts Git et limite les droits du serveur aux seules actions strictement nécessaires (accès restreint au bucket du projet, à la table DynamoDB, à la file SQS et au sujet SNS).
+
+\subsection{Amazon CloudWatch : observabilité et métriques d'évaluation}
+
+\textbf{Rôle au sein de l'architecture :}
+Collecte continue des journaux système Nginx, des traces d'exécution applicatives, de l'utilisation CPU de l'instance et de la profondeur de la file SQS.
+
+\textbf{Justification de ce choix :}
+Permet de prouver formellement aux évaluateurs le bon fonctionnement du système sous charge, la conformité des temps de réponse et l'adéquation budgétaire du projet.
+
+\section{Synthèse des avantages majeurs de l'architecture}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Synthèse des bénéfices architecturaux}\label{tab:benefices-infra}
+    \begin{tabular}{p{4.2cm} p{10cm}}
+        \toprule
+        \rowcolor{violetprincipal}
+        \thead{Dimension} & \thead{Bénéfice apporté} \\
+        \midrule
+        \textbf{Atomicité absolue (C1)} & Résolution de la concurrence au niveau de DynamoDB par écriture conditionnelle native ; impossibilité mathématique de surréservation. \\
+        \rowcolor{violettresclair}
+        \textbf{Performance collaborative (C2)} & Maintien des sockets en mémoire vive sur EC2 sans surcoût d'invocation à chaque frappe de clavier ; synchronisation CRDT en temps réel. \\
+        \textbf{Immunité réseau au pic (C5)} & Les flux de téléchargement des PDF sont totalement déportés vers S3 via les URLs présignées, préservant la bande passante de l'instance. \\
+        \rowcolor{violettresclair}
+        \textbf{Protection contre le déni de service} & La file SQS lisse la charge de compilation des PDF, protégeant l'instance de tout écroulement mémoire lors d'arrivées massives. \\
+        \textbf{Sécurité sans faille} & Conformité totale avec le modèle IAM IMDSv2 : aucun secret n'est codé en dur ou stocké sur le système de fichiers. \\
+        \rowcolor{violettresclair}
+        \textbf{Maîtrise budgétaire} & Ensemble de l'infrastructure couvert par le plan gratuit d'AWS et l'enveloppe de crédits disponible (coût facturé de 0,00\,\$). \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+

@@ -1,0 +1,204 @@
+\chapter{Architecture Logicielle et Choix Technologiques}
+
+\section{Vue d'ensemble du découpage applicatif}
+
+L'architecture logicielle du système est conçue pour concilier la haute réactivité exigée par l'édition collaborative en temps réel et l'arbitrage ultra-rapide d'un volume important de requêtes lors de la parution de la revue. Elle s'articule autour de trois couches logiques étanches :
+
+\begin{enumerate}
+    \item \textbf{La couche cliente (Frontend SPA) :} une interface web monopage assurant la manipulation fluide du texte, la visualisation en direct des collaborateurs et la consultation réactive des états de téléchargement.
+    \item \textbf{La couche de médiation et de services applicatifs (Backend EC2) :} un ensemble de modules spécialisés hébergés sur l'instance, assurant la terminaison des protocoles réseau, la synchronisation sans perte, l'arbitrage atomique des accès et l'exécution asynchrone des compilations documentaires.
+    \item \textbf{La couche de persistance et de distribution (Données \& Stockage) :} la combinaison d'une base de données NoSQL clé-valeur pour les données transactionnelles rapides et d'un stockage objet pour les artéfacts volumineux.
+\end{enumerate}
+
+\section{Justification détaillée des choix technologiques Frontend}
+
+Le choix de la pile frontend répond à une exigence stricte de légèreté, de rapidité d'exécution et d'intégration native avec les protocoles de synchronisation sans conflit.
+
+\subsection{Framework d'interface : React 18 couplé à Vite}
+\begin{itemize}
+    \item \textbf{Rôle :} Structuration de l'application monopage (SPA) et gestion du cycle de vie des vues (interface rédacteur, tableau de bord administrateur, écran visiteur).
+    \item \textbf{Justification technique :} 
+    \begin{itemize}
+        \item \emph{Réconciliation optimisée du DOM virtuel :} Lors d'une session collaborative à plusieurs dizaines de participants, les deltas textuels et les déplacements de curseurs génèrent des dizaines de rafraîchissements par seconde. Le mécanisme de réconciliation par lots (\emph{automatic batching}) de React 18 évite les recalculs superflus de l'arbre DOM et préserve la fluidité de frappe sous les 60 images par seconde.
+        \item \emph{Vélocité de développement avec Vite :} Vite exploite les modules ES natifs du navigateur (\emph{ES Modules}), éliminant les temps de compilation lourds lors du développement et produisant un bundle statique hautement optimisé (minifié et pré-compressé), idéal pour être servi par Nginx avec une empreinte réseau minimale.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Moteur d'édition de texte riche : Quill.js (via y-quill)}
+\begin{itemize}
+    \item \textbf{Rôle :} Fournir aux rédacteurs une surface de saisie ergonomique (mise en forme basique, sélection, curseurs multiples colorés).
+    \item \textbf{Justification technique :} 
+    \begin{itemize}
+        \item \emph{Format Delta immuable :} Contrairement aux éditeurs basés sur du HTML brut ou l'API native instable \texttt{contenteditable}, Quill représente chaque modification sous forme de deltas linéaires (\texttt{insert}, \texttt{delete}, \texttt{retain}). Ce formalisme correspond exactement à la structure mathématique requise par les moteurs de consensus collaboratif.
+        \item \emph{Liaison native avec Yjs (\texttt{y-quill}) :} La communauté open-source maintient un adaptateur officiel reliant directement l'arbre interne de Quill à la structure partagée \texttt{Y.Text}, garantissant une propagation bidirectionnelle instantanée sans écriture de code d'interfaçage complexe.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Moteur de synchronisation collaborative : Yjs (CRDT)}
+\begin{itemize}
+    \item \textbf{Rôle :} Garantir la convergence mathématique absolue de tous les rédacteurs connectés vers le même état documentaire (Contrainte C2).
+    \item \textbf{Justification technique :} 
+    \begin{itemize}
+        \item \emph{Propriétés des CRDTs (Conflict-free Replicated Data Types) :} Contrairement à l'Operational Transformation (OT) qui exige un serveur central verrouillant et réordonnant séquentiellement les frappes, Yjs applique des opérations commutatives et associatives. Même en cas de latence réseau ou de réception des paquets dans le désordre, tous les clients convergent mathématiquement vers un document strictement identique sans aucune perte de caractère.
+        \item \emph{Format binaire ultra-compact :} Yjs compresse ses mises à jour sous forme d'octets bruts (\texttt{Uint8Array}) avec codage par plages (\emph{Run-Length Encoding}), réduisant la taille moyenne d'une frappe à moins de 20 octets sur le réseau.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Gestion de la présence en temps réel : Sous-protocole Awareness de Yjs}
+\begin{itemize}
+    \item \textbf{Rôle :} Diffuser en continu les coordonnées du curseur de chaque rédacteur, son nom déclaré et une couleur d'identification unique.
+    \item \textbf{Justification technique :} 
+    \begin{itemize}
+        \item \emph{Éphémérité totale en mémoire vive :} L'information de présence n'a aucune valeur historique : elle ne doit jamais être enregistrée en base de données. Le module \texttt{Awareness} gère cette diffusion sous forme de messages volatils point-à-multipoint via les WebSockets, déchargeant intégralement la couche de persistance.
+        \item \emph{Détection automatique de déconnexion :} Intègre un mécanisme de pulsation (\emph{heartbeat}) qui supprime automatiquement l'avatar et le curseur d'un collaborateur dont la connexion est interrompue.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Contrôleur de téléchargement visiteur : Machine à états finis}
+\begin{itemize}
+    \item \textbf{Rôle :} Orchestrer l'expérience utilisateur des visiteurs accédant au lien de téléchargement lors du pic.
+    \item \textbf{Justification technique :} 
+    \begin{itemize}
+        \item \emph{Prévention des doubles soumissions :} La machine à états empêche physiquement l'utilisateur de cliquer plusieurs fois sur le bouton pendant le traitement de sa demande.
+        \item \emph{Transitions déterministes :} L'interface bascule entre 4 états nets : \textit{Vérification} (émission de la requête), \textit{En attente de compilation} (interrogation périodique douce toutes les 1,5 s), \textit{Prêt} (redirection immédiate vers l'URL présignée S3), et \textit{Épuisé} (arrêt définitif de tout appel réseau).
+    \end{itemize}
+\end{itemize}
+
+\section{Justification détaillée des choix technologiques Backend}
+
+\subsection{Environnement d'exécution : Node.js LTS (Runtime V8 asynchrone)}
+\begin{itemize}
+    \item \textbf{Rôle :} Exécution de l'ensemble des modules applicatifs côté serveur (sockets, API REST, worker).
+    \item \textbf{Justification technique :} 
+    \begin{itemize}
+        \item \emph{Modèle d'entrées/sorties non bloquant basé sur libuv :} Un serveur synchrone multithreadé (de type Apache ou WSGI classique) alloue un thread par connexion. Pour 300 rédacteurs maintenant des sockets ouverts en permanence, la consommation mémoire et le coût de commutation de contexte (\emph{context switching}) dégraderaient rapidement une instance \texttt{t3.micro}. Grâce à sa boucle d'événements unique (\emph{Event Loop}), Node.js gère des milliers de connexions concurrentes avec une consommation mémoire inférieure à 150 Mo.
+        \item \emph{Support natif de l'écosystème Yjs :} Le serveur officiel \texttt{y-websocket} est écrit en Node.js, garantissant une compatibilité à 100\,\% sans dépendance logicielle tierce.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Moteur de sockets collaboratif : y-websocket}
+\begin{itemize}
+    \item \textbf{Rôle :} Maintien des sessions WebSockets bidirectionnelles, réception des deltas CRDT et diffusion aux collaborateurs connectés sur le document.
+    \item \textbf{Justification technique :} 
+    \begin{itemize}
+        \item \emph{Synchronisation d'état en mémoire vive :} Maintient l'instance \texttt{Y.Doc} active en RAM. La fusion des modifications s'effectue en temps machine (microsecondes), permettant une diffusion inter-clients quasi-instantanée ($< 2$\,ms).
+        \item \emph{Intercepteur de contrôle de quota (C4) :} Permet d'intercepter chaque paquet entrant pour calculer le delta de caractères insérés et vérifier le crédit restant de l'auteur avant d'accepter la diffusion.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Passerelle HTTP \& Gatekeeper : Express.js / Fastify}
+\begin{itemize}
+    \item \textbf{Rôle :} Exposition des routes REST d'administration, de gestion documentaire et hébergement du contrôleur d'admission des téléchargements.
+    \item \textbf{Justification technique :} 
+    \begin{itemize}
+        \item \emph{Légèreté et rapidité de mise en œuvre :} Framework minimaliste, hautement éprouvé, avec une surcharge par requête quasi-nulle.
+        \item \emph{Chemin critique d'admission (Gatekeeper) :} Sous le pic de 15\,000 requêtes, ce contrôleur se contente d'exécuter l'appel atomique vers DynamoDB. En cas de refus, il renvoie un code HTTP 410 en moins de 15 ms sans solliciter le système de fichiers ni le moteur de rendu documentaire.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Kit de développement Cloud : AWS SDK v3 pour JavaScript (@aws-sdk)}
+\begin{itemize}
+    \item \textbf{Rôle :} Communication entre les services applicatifs locaux et les services régionaux AWS (DynamoDB, SQS, S3, SNS).
+    \item \textbf{Justification technique :} 
+    \begin{itemize}
+        \item \emph{Architecture modulaire par client :} Contrairement à l'ancienne version monolithique du SDK, la v3 permet d'importer uniquement les clients nécessaires (\texttt{@aws-sdk/client-dynamodb}, \texttt{@aws-sdk/client-sqs}, etc.), réduisant l'empreinte mémoire du processus.
+        \item \emph{Résolution automatique des identifiants IMDSv2 :} Récupère de façon transparente et sécurisée les jetons temporaires fournis par le rôle d'instance IAM, sans aucune configuration de clés statiques.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Moteur de composition documentaire : Typst (ou Puppeteer-core Headless)}
+\begin{itemize}
+    \item \textbf{Rôle :} Compilation du texte consolidé de la revue en fichier PDF vectoriel haute définition lors de la première demande sur une version.
+    \item \textbf{Justification technique :} 
+    \begin{itemize}
+        \item \emph{Rapidité foudroyante et sobriété mémoire (Typst) :} Écrit en Rust, Typst compile des documents complexes en quelques dizaines de millisecondes avec une empreinte RAM inférieure à 40 Mo. Il surpasse largement les moteurs LaTeX traditionnels ou les navigateurs complets (\emph{Headless Chrome}) qui requièrent plusieurs centaines de mégaoctets de mémoire et risqueraient de provoquer une erreur d'épuisement mémoire (\emph{Out-Of-Memory}) sur une petite instance EC2.
+        \item \emph{Typographie et rendu professionnel :} Génère un PDF conforme aux standards d'impression de la revue numérique associative.
+    \end{itemize}
+\end{itemize}
+
+\subsection{Gestionnaire de processus système : systemd sous Linux}
+\begin{itemize}
+    \item \textbf{Rôle :} Supervision, exécution en arrière-plan et redémarrage automatique des processus Node.js.
+    \item \textbf{Justification technique :} 
+    \begin{itemize}
+        \item \emph{Résilience et haute disponibilité locale :} En configurant la directive \texttt{Restart=always} et un délai \texttt{RestartSec=3}, systemd garantit que si l'un des processus applicatifs devait s'interrompre inopinément, il est relancé en quelques secondes sans interruption prolongée du service.
+        \item \emph{Injection propre de l'environnement :} Injection des variables de configuration système via un fichier dédié (\texttt{/etc/journal.env}), conforme aux exigences de sécurité du cours.
+    \end{itemize}
+\end{itemize}
+
+\section{Justification détaillée des choix technologiques de Persistance}
+
+\subsection{Base de données transactionnelle : Amazon DynamoDB (NoSQL clé-valeur)}
+\begin{itemize}
+    \item \textbf{Rôle :} Persistance des métadonnées, arbitrage atomique des quotas de liens (C1), journalisation en ajout seul des frappes (C2) et contrôle centralisé des crédits d'écriture (C4).
+    \item \textbf{Justification face aux bases relationnelles (SQL) :}
+    \begin{enumerate}
+        \item \emph{Élimination de la contention de verrous (Lock Contention) :} Dans un SGBD relationnel (PostgreSQL ou MySQL), arbitrer l'attribution de 500 places parmi 15\,000 requêtes en rafale impose des verrous de ligne exclusifs (\texttt{SELECT ... FOR UPDATE}). Cette approche crée une saturation immédiate de la file d'attente de verrous, une explosion des temps de latence et des risques réels d'interblocage (\emph{deadlocks}). DynamoDB résout ce problème au niveau de son moteur Paxos distribué : l'opération conditionnelle s'exécute en temps constant $O(1)$ en moins de 10 ms sans verrouiller la table.
+        \item \emph{Modélisation Single-Table Design :} Permet de regrouper l'ensemble des entités du projet au sein d'une seule table physique hautement partitionnée, réduisant drastiquement les coûts opérationnels.
+        \item \emph{Facturation strictement à l'usage :} Le mode On-Demand élimine les frais d'instance permanente d'un service managé tel que RDS, garantissant une facture théorique inférieure à quelques centimes pour l'ensemble des tests.
+    \end{enumerate}
+\end{itemize}
+
+\subsection{Stockage des artéfacts binaires : Amazon S3}
+\begin{itemize}
+    \item \textbf{Rôle :} Stockage durable des fichiers PDF compilés et des instantanés consolidés des documents.
+    \item \textbf{Justification technique :} 
+    \begin{itemize}
+        \item \emph{Durabilité maximale (99,999999999\,\%) :} Garantit l'intégrité absolue des documents publiés.
+        \item \emph{Délégation totale de bande passante par URLs présignées :} L'instance EC2 signe cryptographiquement une URL temporaire d'accès direct en mémoire locale. Le flux binaire lourd du PDF (pouvant atteindre plusieurs mégaoctets par exemplaire) est transféré directement des serveurs d'Amazon S3 vers les navigateurs des visiteurs. Ce délestage total protège la carte réseau et le processeur de l'EC2, qui restent à 100\,\% disponibles pour l'édition collaborative des rédacteurs.
+    \end{itemize}
+\end{itemize}
+
+\subsection{File de messages tampon : Amazon SQS}
+\begin{itemize}
+    \item \textbf{Rôle :} File d'attente tampon asynchrone découplant la décision d'admission du visiteur de la compilation physique du fichier PDF.
+    \item \textbf{Justification technique :} 
+    \begin{itemize}
+        \item \emph{Lissage de charge (Load Leveling) :} Même si 500 visiteurs obtiennent une place dans la même seconde, la file SQS retient les ordres de rendu sans déborder. Le worker traite ces ordres à un débit constant compatible avec le CPU de la machine, éliminant tout risque d'écroulement.
+        \item \emph{Gestion native des pannes :} Si la génération d'un PDF échoue, le message redevient visible dans la file après l'expiration du délai de visibilité pour être retenté, assurant une tolérance aux pannes robuste.
+    \end{itemize}
+\end{itemize}
+
+\section{Serveur Frontal et Reverse-Proxy : Nginx}
+\begin{itemize}
+    \item \textbf{Rôle :} Point d'entrée unique de la machine virtuelle sur les ports 80 et 443.
+    \item \textbf{Justification technique :} 
+    \begin{itemize}
+        \item \emph{Terminaison TLS et sécurité :} Chiffre l'ensemble des communications (HTTPS et WSS) et protège les processus Node.js internes qui n'écoutent que sur l'interface locale \texttt{127.0.0.1}.
+        \item \emph{Routage protocolaire haute performance :} Nginx gère nativement le surclassement de protocole vers les WebSockets (\texttt{proxy\_set\_header Upgrade \$http\_upgrade}) pour le chemin collaboratif, tout en relayant les requêtes API REST vers le port dédié.
+        \item \emph{Mise en cache et compression :} Compresse les ressources web statiques (Gzip) pour accélérer le chargement initial de l'application cliente sur les navigateurs des rédacteurs.
+    \end{itemize}
+\end{itemize}
+
+\section{Matrice de synthèse des choix technologiques}
+
+\begin{table}[htbp]
+    \centering
+    \caption{Synthèse des composants logiciels et justifications associées}\label{tab:justification-tech}
+    \begin{tabular}{p{3.5cm} p{3.2cm} p{7.5cm}}
+        \toprule
+        \rowcolor{violetprincipal}
+        \thead{Composant} & \thead{Technologie} & \thead{Justification clé} \\
+        \midrule
+        Interface Rédacteur & React 18 + Vite & Réactivité de l'arbre virtuel sous frappes intenses ; outillage moderne et rapide. \\
+        \rowcolor{violettresclair}
+        Éditeur de texte & Quill.js + y-quill & Modèle Delta immuable parfaitement adapté aux flux de synchronisation temps réel. \\
+        Consensus d'édition & Yjs (CRDT) & Convergence déterministe mathématique sans verrou ni perte de caractère (C2). \\
+        \rowcolor{violettresclair}
+        Présence & Awareness Protocol & Diffusion éphémère ultra-légère des curseurs en mémoire vive sans écriture disque. \\
+        Serveur Applicatif & Node.js (LTS) & Modèle événementiel asynchrone idéal pour 300 sockets persistants sur petite RAM. \\
+        \rowcolor{violettresclair}
+        Serveur Collab & y-websocket & Serveur officiel Yjs optimisé pour le protocole binaire compact. \\
+        Passerelle REST & Express / Fastify & Simplicité, robustesse et temps de réponse $< 15$\,ms sur le Gatekeeper d'admission. \\
+        \rowcolor{violettresclair}
+        Compilateur PDF & Typst / Puppeteer & Vitesse de compilation native en millisecondes et très faible consommation mémoire. \\
+        Supervision & systemd Linux & Haute disponibilité locale et reprise automatique sur incident sans intervention. \\
+        \rowcolor{violettresclair}
+        Base transactionnelle & Amazon DynamoDB & Écritures conditionnelles atomiques $O(1)$ sans contention de verrous (C1 \& C4). \\
+        Stockage des fichiers & Amazon S3 & URLs présignées déportant 100\,\% de la bande passante du téléchargement (C5). \\
+        \rowcolor{violettresclair}
+        Tampon asynchrone & Amazon SQS & Découplage strict et lissage de charge évitant tout écroulement CPU de l'instance. \\
+        Reverse-Proxy & Nginx & Terminaison TLS, compression et routage sélectif WSS / HTTP sur ports standards. \\
+        \bottomrule
+    \end{tabular}
+\end{table}

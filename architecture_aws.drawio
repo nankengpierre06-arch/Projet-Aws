@@ -1,0 +1,155 @@
+<?xml version="1.0" ?>
+<mxfile host="app.diagrams.net" modified="2026-10-25T07:45:00.000Z" agent="Antigravity" version="24.0.0" type="device">
+  <diagram id="architecture-aws-updated" name="Architecture AWS">
+    <mxGraphModel dx="1877" dy="1763" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-1" parent="1" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=15;fontStyle=1;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grType=cloud;strokeColor=#232F3E;fillColor=#FAFAFA;verticalAlign=top;align=left;spacingLeft=40;spacingTop=10;" value="&lt;b&gt;AWS Cloud (Région eu-west-3 Paris / eu-north-1)&lt;/b&gt;" vertex="1">
+          <mxGeometry height="1470" width="1580" x="380" y="-630" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-2" parent="ZBfez-qlDdoBK5a3WAGX-1" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=13;fontStyle=1;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grType=vpc;strokeColor=#248814;fillColor=#FFFFFF;dashed=1;verticalAlign=top;align=left;spacingLeft=35;spacingTop=8;" value="&lt;b&gt;VPC par défaut / Sous-réseau public (10.0.0.0/24)&lt;/b&gt;" vertex="1">
+          <mxGeometry height="1010" width="620" x="40" y="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-3" parent="ZBfez-qlDdoBK5a3WAGX-2" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#D9534F;fillColor=#FFF8F8;dashed=1;verticalAlign=top;align=center;fontSize=11;fontStyle=0;spacingTop=6;container=1;collapsible=0;recursiveResize=0;" value="&lt;b&gt;Security Group: sg-journal-web&lt;/b&gt;&lt;br&gt;&lt;font color='#666666' style='font-size: 10px;'&gt;Inbound: 80 (HTTP), 443 (HTTPS) pour 0.0.0.0/0 | 22 (SSH) restreint IP admin&lt;/font&gt;" vertex="1">
+          <mxGeometry height="900" width="580" x="20" y="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-4" parent="ZBfez-qlDdoBK5a3WAGX-3" style="rounded=1;whiteSpace=wrap;html=1;strokeColor=#ED7100;fillColor=#FFF3E8;verticalAlign=top;align=center;fontSize=12;fontStyle=0;spacingTop=10;container=1;collapsible=0;recursiveResize=0;strokeWidth=2;" value="&lt;b&gt;Instance Amazon EC2 (t3.micro - Amazon Linux 2023)&lt;/b&gt;&lt;br&gt;&lt;font color='#E67E22' style='font-size: 11px;'&gt;Attachée au Rôle IAM : role-journal-app (IMDSv2)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="795" width="530" x="20" y="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-5" parent="ZBfez-qlDdoBK5a3WAGX-4" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#ED7100;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.ec2;" value="" vertex="1">
+          <mxGeometry height="35" width="35" x="15" y="10" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-6" parent="ZBfez-qlDdoBK5a3WAGX-4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F8F5;strokeColor=#2ECC71;align=left;spacingLeft=15;fontSize=11;" value="&lt;b&gt;Serveur Frontal Nginx (Ports 80 &amp; 443)&lt;/b&gt;&lt;br&gt;&lt;font style='font-size: 10px; color: #555555;'&gt;- Terminaison SSL/TLS (HTTPS &amp; WSS)&lt;br&gt;- Routage dynamique /ws vers port 1234 &amp; /api vers port 8000&lt;br&gt;- Compression gzip &amp; Keep-Alive&lt;/font&gt;" vertex="1">
+          <mxGeometry height="80" width="400" x="30" y="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-7" parent="ZBfez-qlDdoBK5a3WAGX-4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F4ECF7;strokeColor=#8E44AD;align=left;spacingLeft=15;fontSize=11;strokeWidth=1.5;" value="&lt;b&gt;Service Collab Temps Réel (Node.js - Port 1234)&lt;/b&gt;&lt;br&gt;&lt;font style='font-size: 10px; color: #555555;'&gt;- Moteur CRDT Yjs (y-websocket)&lt;br&gt;- Synchronisation binaire des deltas textuels (C2)&lt;br&gt;- Gestion de l'Awareness (curseurs &amp; présences)&lt;br&gt;- Décompte et contrôle du crédit 10k caractères/jour (C4)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="105" width="400" x="50" y="240" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-8" parent="ZBfez-qlDdoBK5a3WAGX-4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EBF5FB;strokeColor=#2980B9;align=left;spacingLeft=15;fontSize=11;strokeWidth=1.5;" value="&lt;b&gt;Passerelle API &amp; Gatekeeper (Node.js - Port 8000)&lt;/b&gt;&lt;br&gt;&lt;font style='font-size: 10px; color: #555555;'&gt;- Endpoints REST : Auth déclarative, Liens, Snapshots&lt;br&gt;- &lt;b&gt;Gatekeeper Téléchargement (C1) :&lt;/b&gt; Arbitre le quota N=500 au pic&lt;br&gt;- Décrément atomique DynamoDB &amp; Délivrance par jeton à usage unique&lt;br&gt;- État dynamique : Vérification &amp;rarr; Patientez &amp;rarr; Prêt &amp;rarr; Épuisé&lt;/font&gt;" vertex="1">
+          <mxGeometry height="100" width="400" x="50" y="360" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-9" parent="ZBfez-qlDdoBK5a3WAGX-4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF9E7;strokeColor=#F39C12;align=left;spacingLeft=15;fontSize=11;" value="&lt;b&gt;Worker de Compilation PDF (Service d'arrière-plan SQS)&lt;/b&gt;&lt;br&gt;&lt;font style='font-size: 10px; color: #555555;'&gt;- Consommateur asynchrone de la file SQS (Long Polling)&lt;br&gt;- Moteur de rendu haute vélocité (Typst natif Rust &amp;lt; 80 ms, RAM &amp;lt; 40 Mo)&lt;br&gt;- Dépôt du PDF final sur Amazon S3 par clé de version (C3)&lt;br&gt;- Suppression sécurisée du message SQS acquitté&lt;/font&gt;" vertex="1">
+          <mxGeometry height="100" width="400" x="50" y="490" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-10" parent="ZBfez-qlDdoBK5a3WAGX-4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2F4F4;strokeColor=#7F8C8D;align=left;spacingLeft=15;fontSize=10;dashed=1;" value="&lt;b&gt;Supervision systemd &amp; Stockage Local EBS&lt;/b&gt;&lt;br&gt;&lt;font style='font-size: 10px; color: #555555;'&gt;- Services journal-collab.service, journal-api.service, journal-worker.service&lt;br&gt;- Redémarrage automatique en cas d'anomalie (Restart=always)&lt;br&gt;- /etc/journal.env (Noms de ressources AWS, zéro clé)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="80" width="400" x="50" y="660" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-11" parent="ZBfez-qlDdoBK5a3WAGX-1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#E91E63;align=left;spacingLeft=65;fontSize=11;strokeWidth=2;" value="&lt;b&gt;Amazon SQS (Simple Queue Service)&lt;/b&gt;&lt;br&gt;&lt;font style='font-size: 10px; color: #333333;'&gt;&lt;b&gt;File standard : pdf-generation-queue&lt;/b&gt;&lt;br&gt;• &lt;b&gt;Découplage asynchrone &amp; Lissage de charge (C5) :&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Ordre de compilation unique par version (absorbe le pic)&lt;br&gt;• Délai de visibilité : 60 s (temps de compilation Typst &amp;lt; 80 ms)&lt;br&gt;• Premier million de requêtes gratuit chaque mois&lt;/font&gt;" vertex="1">
+          <mxGeometry height="120" width="440" x="1100" y="320" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-12" parent="ZBfez-qlDdoBK5a3WAGX-11" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.sqs;" value="" vertex="1">
+          <mxGeometry height="45" width="45" x="15" y="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-13" parent="ZBfez-qlDdoBK5a3WAGX-1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#4CAF50;align=left;spacingLeft=65;fontSize=11;strokeWidth=2;" value="&lt;b&gt;Amazon S3 (Stockage Objet Privé)&lt;/b&gt;&lt;br&gt;&lt;font style='font-size: 10px; color: #333333;'&gt;&lt;b&gt;Bucket : s3://revue-documents-storage&lt;/b&gt;&lt;br&gt;• Stockage sécurisé et pérenne des PDFs compilés (par clé de version)&lt;br&gt;• Sauvegarde des instantanés (Snapshots T1) de documents&lt;br&gt;• &lt;b&gt;Délivrance contrôlée à usage unique :&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;Flux servi exclusivement aux 500 admis via jeton vérifié&lt;br&gt;&amp;nbsp;&amp;nbsp;Garantie mathématique d'aucun dépassement de quota (zéro fuite de lien)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="160" width="440" x="1080" y="700" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-14" parent="ZBfez-qlDdoBK5a3WAGX-13" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#7AA116;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.s3;" value="" vertex="1">
+          <mxGeometry height="45" width="45" x="15" y="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-15" parent="ZBfez-qlDdoBK5a3WAGX-1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#FF9800;align=left;spacingLeft=65;fontSize=11;strokeWidth=1.5;" value="&lt;b&gt;Amazon SNS (Simple Notification Service)&lt;/b&gt;&lt;br&gt;&lt;font style='font-size: 10px; color: #333333;'&gt;&lt;b&gt;Sujet : alerte-dernier-exemplaire&lt;/b&gt;&lt;br&gt;• Déclenché dès &lt;code&gt;places_restantes == 0&lt;/code&gt; (C6)&lt;br&gt;• Notification par e-mail automatique au créateur du lien&lt;br&gt;• Découplé, sans serveur SMTP local&lt;/font&gt;" vertex="1">
+          <mxGeometry height="110" width="440" x="1090" y="910" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-16" parent="ZBfez-qlDdoBK5a3WAGX-15" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.sns;" value="" vertex="1">
+          <mxGeometry height="45" width="45" x="15" y="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-17" parent="ZBfez-qlDdoBK5a3WAGX-1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#AB47BC;align=left;spacingLeft=55;fontSize=10;" value="&lt;b&gt;AWS IAM (IMDSv2)&lt;/b&gt;&lt;br&gt;&lt;font style='font-size: 10px; color: #333333;'&gt;Rôle d'instance &lt;code&gt;role-journal-app&lt;/code&gt; au moindre privilège : S3 Put/Get, DynamoDB Update/Get, SQS Send/Receive, SNS Publish. Aucune clé codée en dur.&lt;/font&gt;" vertex="1">
+          <mxGeometry height="80" width="440" x="1100" y="1140" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-18" parent="ZBfez-qlDdoBK5a3WAGX-17" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#759C3E;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.iam;" value="" vertex="1">
+          <mxGeometry height="35" width="35" x="10" y="18" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-19" parent="ZBfez-qlDdoBK5a3WAGX-1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FBE9E7;strokeColor=#FF5722;align=left;spacingLeft=55;fontSize=10;" value="&lt;b&gt;Amazon CloudWatch&lt;/b&gt;&lt;br&gt;&lt;font style='font-size: 10px; color: #333333;'&gt;Métriques CPU/RAM EC2, profondeur de file SQS, requêtes DynamoDB, logs Nginx/App et preuve de coût.&lt;/font&gt;" vertex="1">
+          <mxGeometry height="70" width="440" x="1100" y="1330" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-20" parent="ZBfez-qlDdoBK5a3WAGX-19" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.cloudwatch;" value="" vertex="1">
+          <mxGeometry height="35" width="35" x="10" y="15" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-21" edge="1" parent="ZBfez-qlDdoBK5a3WAGX-1" source="ZBfez-qlDdoBK5a3WAGX-7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E44AD;strokeWidth=2;fontSize=10;fontColor=#8E44AD;entryX=0.002;entryY=0.335;entryDx=0;entryDy=0;entryPerimeter=0;" target="ZBfez-qlDdoBK5a3WAGX-23" value="&lt;b&gt;1. Écriture Append-Only (C2)&lt;/b&gt;&lt;br&gt;&amp; Décompte crédit 10k (C4)">
+          <mxGeometry relative="1" x="-0.4006" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-22" edge="1" parent="ZBfez-qlDdoBK5a3WAGX-1" source="ZBfez-qlDdoBK5a3WAGX-8" style="rounded=1;strokeColor=#2E27AD;strokeWidth=2.5;fontSize=10;fontColor=#2E27AD;fontStyle=1;entryX=0.014;entryY=0.945;entryDx=0;entryDy=0;exitX=0.981;exitY=0.032;exitDx=0;exitDy=0;exitPerimeter=0;edgeStyle=orthogonalEdgeStyle;entryPerimeter=0;" target="ZBfez-qlDdoBK5a3WAGX-23" value="&lt;b&gt;2. Décrément conditionnel atomique&lt;/b&gt;&lt;br&gt;&lt;code&gt;remaining &amp;gt; 0&lt;/code&gt; (Contrainte C1)">
+          <mxGeometry relative="1" x="0.2976" as="geometry">
+            <mxPoint as="offset"/>
+            <Array as="points">
+              <mxPoint x="630" y="553.2"/>
+              <mxPoint x="630" y="270"/>
+              <mxPoint x="1000" y="270"/>
+              <mxPoint x="1000" y="241.8"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-23" parent="ZBfez-qlDdoBK5a3WAGX-1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8EAF6;strokeColor=#3F51B5;align=left;spacingLeft=65;fontSize=11;strokeWidth=2;" value="&lt;b&gt;Amazon DynamoDB (Mode On-Demand)&lt;/b&gt;&lt;br&gt;&lt;font style='font-size: 10px; color: #333333;'&gt;&lt;b&gt;Table unique : JournalTable (Single-Table Design)&lt;/b&gt;&lt;br&gt;• &lt;b&gt;Compteur atomique LINK#id (C1) :&lt;/b&gt;&lt;br&gt;&amp;nbsp;&amp;nbsp;&lt;code&gt;SET rem = rem - 1 WHERE rem &amp;gt; 0&lt;/code&gt;&lt;br&gt;• &lt;b&gt;Journal durable Append-Only (C2 &amp; C3) :&lt;/b&gt; DOC#id / REV#seq&lt;br&gt;• &lt;b&gt;Statut de compilation PDF :&lt;/b&gt; PENDING | READY (ordre SQS unique)&lt;br&gt;• &lt;b&gt;Crédits quotidiens (C4) :&lt;/b&gt; USER#email / CREDIT#date&lt;br&gt;• Arbitrage en &amp;lt; 10 ms sans verrouillage applicatif&lt;/font&gt;" vertex="1">
+          <mxGeometry height="150" width="440" x="1100" y="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-24" parent="ZBfez-qlDdoBK5a3WAGX-23" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#2E27AD;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.dynamodb;" value="" vertex="1">
+          <mxGeometry height="45" width="45" x="15" y="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-25" parent="1" style="shape=mxgraph.aws4.group;grType=user;fillColor=#F3E5F5;strokeColor=#8E44AD;strokeWidth=2;fontSize=12;align=center;verticalAlign=top;spacingTop=10;whiteSpace=wrap;html=1;" value="&lt;b&gt;300 Rédacteurs Actifs&lt;/b&gt;&lt;br&gt;&lt;font style='font-size: 10px; color: #666666;'&gt;Navigateurs Web (React/Quill/Yjs)&lt;br&gt;• Connexions longues WSS&lt;br&gt;• Petits deltas textuels fréquents&lt;br&gt;• Partage de curseurs &amp; présence&lt;br&gt;• Quota 10k caractères/jour (C4)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="140" width="250" x="-290" y="-515" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-26" parent="1" style="shape=mxgraph.aws4.group;grType=user;fillColor=#EBF5FB;strokeColor=#2980B9;strokeWidth=2;fontSize=12;align=center;verticalAlign=top;spacingTop=10;whiteSpace=wrap;html=1;" value="&lt;b&gt;15 000 Visiteurs (Pic de Parution)&lt;/b&gt;&lt;br&gt;&lt;font style='font-size: 10px; color: #666666;'&gt;Navigateurs Web Anonymes&lt;br&gt;• Rafale : 80% en 1 min (~200 req/s)&lt;br&gt;• Compétition pour 500 places (C1)&lt;br&gt;• &lt;b&gt;500 admis :&lt;/b&gt; Téléchargement contrôlé par jeton unique&lt;br&gt;• &lt;b&gt;14 500 refusés :&lt;/b&gt; Réponse 410 'Épuisé' immédiate en &amp;lt; 15 ms&lt;/font&gt;" vertex="1">
+          <mxGeometry height="140" width="250" x="-310" y="-275" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-27" parent="1" style="shape=mxgraph.aws4.group;grType=user;fillColor=#FFF3E0;strokeColor=#E67E22;strokeWidth=1.5;fontSize=11;align=center;verticalAlign=top;spacingTop=10;whiteSpace=wrap;html=1;" value="&lt;b&gt;Créateur du Document / Lien&lt;/b&gt;&lt;br&gt;&lt;font style='font-size: 10px; color: #666666;'&gt;Boîte e-mail du rédacteur créateur&lt;br&gt;Reçoit l'alerte 'Dernier exemplaire'&lt;/font&gt;" vertex="1">
+          <mxGeometry height="90" width="250" x="40" y="750" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-28" edge="1" parent="1" source="ZBfez-qlDdoBK5a3WAGX-25" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#8E44AD;strokeWidth=2.5;fontSize=10;fontColor=#8E44AD;fontStyle=1;" target="ZBfez-qlDdoBK5a3WAGX-6" value="&lt;b&gt;WSS (Port 443)&lt;/b&gt;&lt;br&gt;Deltas Yjs &amp; Curseurs">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-29" edge="1" parent="1" source="ZBfez-qlDdoBK5a3WAGX-6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#8E44AD;strokeWidth=2;fontSize=9;fontColor=#8E44AD;entryX=0.165;entryY=0.024;entryDx=0;entryDy=0;entryPerimeter=0;exitX=0.631;exitY=1.009;exitDx=0;exitDy=0;exitPerimeter=0;" target="ZBfez-qlDdoBK5a3WAGX-7" value="Proxy WSS&lt;br&gt;127.0.0.1:1234">
+          <mxGeometry relative="1" x="-0.2464" as="geometry">
+            <mxPoint as="offset"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-30" edge="1" parent="1" source="ZBfez-qlDdoBK5a3WAGX-26" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2980B9;strokeWidth=2.5;fontSize=10;fontColor=#2980B9;fontStyle=1;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" target="ZBfez-qlDdoBK5a3WAGX-6" value="&lt;b&gt;HTTPS GET /download/{id}&lt;/b&gt;&lt;br&gt;Pic de 15 000 requêtes">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-31" edge="1" parent="1" source="ZBfez-qlDdoBK5a3WAGX-6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#2980B9;strokeWidth=2;fontSize=9;fontColor=#2980B9;entryX=0;entryY=0.75;entryDx=0;entryDy=0;" target="ZBfez-qlDdoBK5a3WAGX-8" value="Proxy HTTP&lt;br&gt;127.0.0.1:8000">
+          <mxGeometry relative="1" x="-0.6222" as="geometry">
+            <Array as="points">
+              <mxPoint x="530" y="-260"/>
+              <mxPoint x="490" y="-260"/>
+              <mxPoint x="490" y="-5"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-32" edge="1" parent="1" source="ZBfez-qlDdoBK5a3WAGX-8" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#E91E63;strokeWidth=2;fontSize=10;fontColor=#E91E63;" target="ZBfez-qlDdoBK5a3WAGX-11" value="&lt;b&gt;3. Publie ordre de rendu unique&lt;/b&gt;&lt;br&gt;(si statut PDF = PENDING)">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-33" edge="1" parent="1" source="ZBfez-qlDdoBK5a3WAGX-9" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#F39C12;strokeWidth=2;fontSize=10;fontColor=#D35400;entryX=0;entryY=0.5;exitX=1;exitY=0.5;" target="ZBfez-qlDdoBK5a3WAGX-11" value="&lt;b&gt;4. Consomme la file&lt;/b&gt;&lt;br&gt;(Long Polling lissé)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1400" y="100"/>
+              <mxPoint x="1400" y="-250"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-34" edge="1" parent="1" source="ZBfez-qlDdoBK5a3WAGX-9" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#27AE60;strokeWidth=2;fontSize=10;fontColor=#27AE60;entryX=0;entryY=0.5;exitX=1;exitY=0.75;" target="ZBfez-qlDdoBK5a3WAGX-13" value="&lt;b&gt;5. Dépose le PDF compilé&lt;/b&gt;&lt;br&gt;&lt;code&gt;PutObject (v_seq.pdf)&lt;/code&gt;">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-35" edge="1" parent="1" source="ZBfez-qlDdoBK5a3WAGX-8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#16A085;strokeWidth=2;fontSize=9;fontColor=#16A085;entryX=0.5;entryY=0;exitX=1;exitY=0.85;entryDx=0;entryDy=0;" target="ZBfez-qlDdoBK5a3WAGX-13" value="&lt;b&gt;6a. Récupération flux PDF&lt;/b&gt;&lt;br&gt;GetObject (uniquement si jeton valide)">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-36" edge="1" parent="1" source="ZBfez-qlDdoBK5a3WAGX-13" style="edgeStyle=orthogonalEdgeStyle;html=1;rounded=1;strokeColor=#27AE60;strokeWidth=3;dashed=1;fontSize=10;fontColor=#27AE60;fontStyle=1;exitX=0;exitY=0.8;entryX=0.48;entryY=0.992;entryDx=0;entryDy=0;entryPerimeter=0;" target="ZBfez-qlDdoBK5a3WAGX-26" value="&lt;b&gt;6b. DISTRIBUTION STRICTE DES 500 EXEMPLAIRES (JETON À USAGE UNIQUE)&lt;/b&gt;&lt;br&gt;&lt;font color='#27AE60' style='font-size: 10px;'&gt;Flux PDF streamé à usage unique (100 Mo au total). Zéro dépassement de quota possible par rejeu ni partage de lien.&lt;/font&gt;">
+          <mxGeometry relative="1" x="0.381" as="geometry">
+            <mxPoint as="offset"/>
+            <mxPoint x="-180" y="-130" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-37" edge="1" parent="1" source="ZBfez-qlDdoBK5a3WAGX-8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#E67E22;strokeWidth=2;fontSize=10;fontColor=#E67E22;exitX=0.983;exitY=0.952;entryX=-0.001;entryY=0.371;entryDx=0;entryDy=0;entryPerimeter=0;exitDx=0;exitDy=0;exitPerimeter=0;" target="ZBfez-qlDdoBK5a3WAGX-15" value="&lt;b&gt;7. Alerte dernier ex. (N=0)&lt;/b&gt;&lt;br&gt;Publish Topic">
+          <mxGeometry relative="1" x="-0.0802" as="geometry">
+            <Array as="points">
+              <mxPoint x="903.2" y="20"/>
+              <mxPoint x="1060" y="20"/>
+              <mxPoint x="1060" y="320.8"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ZBfez-qlDdoBK5a3WAGX-38" edge="1" parent="1" source="ZBfez-qlDdoBK5a3WAGX-15" style="edgeStyle=orthogonalEdgeStyle;rounded=1;strokeColor=#E67E22;strokeWidth=2;fontSize=10;fontColor=#E67E22;exitX=-0.004;exitY=0.866;entryX=1;entryY=0.5;exitDx=0;exitDy=0;exitPerimeter=0;" target="ZBfez-qlDdoBK5a3WAGX-27" value="&lt;b&gt;E-mail au créateur (C6)&lt;/b&gt;&lt;br&gt;'Lien épuisé'">
+          <mxGeometry relative="1" x="0.1601" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
