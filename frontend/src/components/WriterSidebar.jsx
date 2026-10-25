@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   FileText, Users, Bell, Link2, 
-  History, Edit3, Shield, Sparkles, ChevronRight
+  History, Edit3, Plus, ChevronRight, Sparkles
 } from 'lucide-react';
 
 export default function WriterSidebar({ 
@@ -13,6 +13,7 @@ export default function WriterSidebar({
   unreadNotifsCount = 0,
   linksCount = 0,
   onSelectTab,
+  onCreateDocClick,
   quota = { used: 0, limit: 10000, remaining: 10000 }
 }) {
   const quotaPercent = Math.min(100, Math.round((quota.used / quota.limit) * 100));
@@ -21,7 +22,7 @@ export default function WriterSidebar({
     {
       id: 'DOCS',
       label: 'Mes Documents',
-      sublabel: 'Documents créés',
+      sublabel: 'Articles rédigés',
       icon: FileText,
       badge: ownedDocsCount,
       color: '#7c3aed'
@@ -36,18 +37,18 @@ export default function WriterSidebar({
     },
     {
       id: 'VERSIONS',
-      label: 'Versions & Instantanés',
-      sublabel: 'Snapshots T1 (C3)',
+      label: 'Versions & Sauvegardes',
+      sublabel: 'Historique & instantanés',
       icon: History,
-      badge: 'C3',
+      badge: null,
       color: '#0891b2'
     },
     {
       id: 'LINKS',
       label: 'Liens de Parution',
-      sublabel: 'Tirage 500 ex. (C1)',
+      sublabel: 'Publications & tirages certifiés',
       icon: Link2,
-      badge: linksCount > 0 ? linksCount : 'C1',
+      badge: linksCount > 0 ? linksCount : null,
       color: '#059669'
     },
     {
@@ -63,8 +64,8 @@ export default function WriterSidebar({
 
   return (
     <aside style={{
-      width: '270px',
-      minWidth: '270px',
+      width: '280px',
+      minWidth: '280px',
       height: '100%',
       minHeight: '100%',
       backgroundColor: '#ffffff',
@@ -76,8 +77,9 @@ export default function WriterSidebar({
       userSelect: 'none',
       boxSizing: 'border-box'
     }}>
-      {/* 1. Haut de Sidebar : Profil du Rédacteur */}
+      {/* 1. Haut de Sidebar : Profil du Rédacteur & Bouton d'Action */}
       <div>
+        {/* Carte de Profil */}
         <div style={{
           padding: '18px 20px',
           borderBottom: '1px solid #f1f5f9',
@@ -85,23 +87,23 @@ export default function WriterSidebar({
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '10px',
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
               background: 'linear-gradient(135deg, #7c3aed 0%, #4338ca 100%)',
               color: '#ffffff',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontWeight: '700',
-              fontSize: '16px',
-              boxShadow: '0 3px 10px rgba(124, 58, 237, 0.25)'
+              fontWeight: '800',
+              fontSize: '17px',
+              boxShadow: '0 4px 12px rgba(124, 58, 237, 0.25)'
             }}>
               {user?.name ? user.name.charAt(0).toUpperCase() : 'R'}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{
-                fontSize: '14px',
+                fontSize: '14.5px',
                 fontWeight: '700',
                 color: '#0f172a',
                 whiteSpace: 'nowrap',
@@ -110,18 +112,55 @@ export default function WriterSidebar({
               }}>
                 {user?.name || 'Rédacteur'}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '2px' }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#22c55e' }} />
-                <span style={{ fontSize: '11px', color: '#64748b' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#22c55e' }} />
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  color: user?.role === 'ADMIN' ? '#b45309' : '#7c3aed',
+                  backgroundColor: user?.role === 'ADMIN' ? '#fef3c7' : '#f5f3ff',
+                  padding: '1px 6px',
+                  borderRadius: '4px'
+                }}>
                   {user?.role === 'ADMIN' ? 'Administrateur' : 'Rédactrice en ligne'}
                 </span>
               </div>
             </div>
           </div>
+
+          {/* Bouton d'Action Rapide : Nouveau Document */}
+          <button
+            onClick={() => {
+              if (onCreateDocClick) onCreateDocClick();
+              else if (onSelectTab) onSelectTab('DOCS');
+            }}
+            style={{
+              width: '100%',
+              marginTop: '16px',
+              padding: '10px 14px',
+              backgroundColor: '#7c3aed',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(124, 58, 237, 0.25)',
+              transition: 'background-color 0.15s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6d28d9'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#7c3aed'}
+          >
+            <Plus size={16} /> Nouveau Document
+          </button>
         </div>
 
         {/* 2. Menu des Toggles de Navigation */}
-        <div style={{ padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ padding: '16px 12px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
           <div style={{
             fontSize: '11px',
             fontWeight: '800',
@@ -130,7 +169,7 @@ export default function WriterSidebar({
             letterSpacing: '0.06em',
             padding: '4px 10px 8px 10px'
           }}>
-            Navigation Rédaction
+            Navigation
           </div>
 
           {navItems.map((item) => {
@@ -164,8 +203,8 @@ export default function WriterSidebar({
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '11px', minWidth: 0 }}>
                   <div style={{
-                    width: '30px',
-                    height: '30px',
+                    width: '32px',
+                    height: '32px',
                     borderRadius: '8px',
                     backgroundColor: isActive ? '#ede9fe' : '#f1f5f9',
                     color: isActive ? '#7c3aed' : '#64748b',
@@ -187,7 +226,7 @@ export default function WriterSidebar({
                     }}>
                       {item.label}
                     </div>
-                    <div style={{ fontSize: '10.5px', color: '#94a3b8' }}>
+                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>
                       {item.sublabel}
                     </div>
                   </div>
@@ -199,8 +238,8 @@ export default function WriterSidebar({
                     fontWeight: '700',
                     padding: '2px 7px',
                     borderRadius: '10px',
-                    backgroundColor: item.badgeColor || (isActive ? '#7c3aed' : '#e2e8f0'),
-                    color: item.badgeColor ? '#ffffff' : (isActive ? '#ffffff' : '#475569')
+                    backgroundColor: item.badgeColor || (isActive ? '#7c3aed' : '#f1f5f9'),
+                    color: item.badgeColor ? '#ffffff' : (isActive ? '#ffffff' : '#64748b')
                   }}>
                     {item.badge}
                   </span>
@@ -213,7 +252,7 @@ export default function WriterSidebar({
           {activeTab === 'EDITOR' && (
             <div style={{
               marginTop: '12px',
-              padding: '10px 12px',
+              padding: '12px',
               borderRadius: '10px',
               backgroundColor: '#faf5ff',
               border: '1px solid #e9d5ff',
@@ -221,14 +260,14 @@ export default function WriterSidebar({
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                <Edit3 size={15} color="#7c3aed" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '9px', minWidth: 0 }}>
+                <Edit3 size={16} color="#7c3aed" />
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#7c3aed', textTransform: 'uppercase' }}>
-                    Éditeur en cours
+                  <div style={{ fontSize: '10.5px', fontWeight: '800', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Éditeur Actif
                   </div>
-                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {activeDocTitle || 'Revue Active'}
+                  <div style={{ fontSize: '12.5px', fontWeight: '700', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {activeDocTitle || 'Revue en cours'}
                   </div>
                 </div>
               </div>
@@ -238,15 +277,15 @@ export default function WriterSidebar({
         </div>
       </div>
 
-      {/* 3. Bas de Sidebar : Jauge Quota Quotidien (10k caractères C4) */}
+      {/* 3. Bas de Sidebar : Jauge Quota Quotidien d'Écriture */}
       <div style={{
-        padding: '16px 18px',
+        padding: '16px 20px',
         borderTop: '1px solid #f1f5f9',
         backgroundColor: '#fafafa'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
           <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>
-            Crédit d'écriture (C4)
+            Crédit d'écriture quotidien
           </span>
           <span style={{ fontSize: '11px', fontWeight: '800', color: quotaPercent >= 90 ? '#ef4444' : '#7c3aed' }}>
             {quota.used.toLocaleString()} / 10 000
@@ -262,9 +301,9 @@ export default function WriterSidebar({
           }} />
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10.5px', color: '#94a3b8' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#94a3b8' }}>
           <span>{quota.remaining.toLocaleString()} car. restants</span>
-          <span>Anti-Abus actif</span>
+          <span>Équité de rédaction</span>
         </div>
       </div>
     </aside>

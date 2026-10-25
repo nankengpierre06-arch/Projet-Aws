@@ -414,7 +414,7 @@ export default function Editor({
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
           >
-            <History size={15} /> Versions (C3)
+            <History size={15} /> Versions
           </button>
 
           <button
@@ -437,7 +437,7 @@ export default function Editor({
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3730a3'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#4338ca'}
           >
-            <Download size={15} /> Publier le Lien (500 ex.)
+            <Download size={15} /> Publier la Parution
           </button>
         </div>
       </header>
@@ -524,9 +524,9 @@ export default function Editor({
           <div className="editorial-meta">
             <span>✍️ Rédacteur actif : <b>{user.name}</b></span>
             <span>•</span>
-            <span>🛡️ CRDT Yjs temps réel (0 conflit)</span>
+            <span>🛡️ Synchronisation collaborative sans conflit</span>
             <span>•</span>
-            <span>🔒 Tirage certifié 500 ex. (C1)</span>
+            <span>🔒 Tirage certifié 500 exemplaires</span>
           </div>
 
           <div className="editorial-divider" />
@@ -561,10 +561,10 @@ export default function Editor({
           )}
         </div>
 
-        {/* Jauge Quota Quotidien (Contrainte C4) */}
+        {/* Jauge Quota Quotidien d'écriture */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ fontSize: '11px', fontWeight: '600', color: '#475569' }}>
-            Crédit d'écriture (C4) : <b>{quota.used.toLocaleString()}</b> / {quota.limit.toLocaleString()}
+            Crédit d'écriture : <b>{quota.used.toLocaleString()}</b> / {quota.limit.toLocaleString()}
           </span>
           <div style={{
             width: '80px',
@@ -585,10 +585,10 @@ export default function Editor({
           </span>
         </div>
 
-        {/* Protection et garantie architecture */}
+        {/* Protection et garantie de sauvegarde */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#64748b' }}>
           <Check size={13} color="#16a34a" />
-          <span>Sauvegarde continue & Snapshots S3 (C2/C3)</span>
+          <span>Sauvegarde continue & Instantanés figés</span>
         </div>
       </footer>
     </div>

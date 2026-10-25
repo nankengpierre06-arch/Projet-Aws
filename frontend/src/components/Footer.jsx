@@ -1,12 +1,12 @@
 import React from 'react';
-import { Shield, Cloud, BookOpen, Heart } from 'lucide-react';
+import { BookOpen, Heart, Mail, Award, Newspaper } from 'lucide-react';
 
 export default function Footer() {
   return (
     <footer style={{
       backgroundColor: '#0f172a',
       color: '#94a3b8',
-      padding: '40px 24px 24px',
+      padding: '44px 24px 28px',
       borderTop: '1px solid #1e293b',
       fontSize: '13px'
     }}>
@@ -14,51 +14,53 @@ export default function Footer() {
         maxWidth: '1200px',
         margin: '0 auto',
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-        gap: '32px',
-        marginBottom: '32px'
+        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+        gap: '36px',
+        marginBottom: '36px'
       }}>
-        {/* Colonne 1 : Projet */}
+        {/* Colonne 1 : Présentation de la Revue */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: 'bold', fontSize: '15px', marginBottom: '12px' }}>
-            <BookOpen size={18} color="var(--primary-border)" />
-            <span>Revue Numérique Annuelle</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '9px', color: '#ffffff', fontWeight: '700', fontSize: '16px', marginBottom: '12px' }}>
+            <Newspaper size={20} color="#a855f7" />
+            <span>Revue Numérique Étudiante</span>
           </div>
-          <p style={{ lineHeight: '1.6', fontSize: '12px' }}>
-            Plateforme collaborative d'écriture et de parution numérique pour l'association étudiante.
-            Déployée sur AWS dans le cadre de l'évaluation Cloud & Développement Web.
+          <p style={{ lineHeight: '1.6', fontSize: '12.5px', color: '#94a3b8' }}>
+            Publication officielle éditée et rédigée par l'association étudiante. Tribune libre universitaire d'investigation, d'innovations pédagogiques et de créations culturelles sur le campus.
           </p>
         </div>
 
-        {/* Colonne 2 : Architecture & Contraintes */}
+        {/* Colonne 2 : Rubriques & Éditions */}
         <div>
-          <h4 style={{ color: '#ffffff', fontWeight: '600', marginBottom: '12px', fontSize: '13px' }}>
-            Contraintes d'Évaluation
+          <h4 style={{ color: '#ffffff', fontWeight: '700', marginBottom: '14px', fontSize: '13.5px', letterSpacing: '0.02em' }}>
+            Rubriques & Parutions
           </h4>
-          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px' }}>
-            <li>• <b>C1 :</b> 500 exemplaires maximum au pic (Gatekeeper)</li>
-            <li>• <b>C2 :</b> 300 rédacteurs simultanés sans perte (CRDT Yjs)</li>
-            <li>• <b>C3 :</b> Instantanés T1 et rendu PDF dynamique à jour</li>
-            <li>• <b>C4 :</b> 10 000 caractères par jour et par rédacteur</li>
-            <li>• <b>C6 :</b> Alerte e-mail automatique au dernier exemplaire</li>
+          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.5px' }}>
+            <li style={{ color: '#cbd5e1' }}>• Grand Numéro Annuel de l'Université</li>
+            <li style={{ color: '#cbd5e1' }}>• Enquêtes & Vie sur le Campus</li>
+            <li style={{ color: '#cbd5e1' }}>• Innovations, Sciences & Technologies</li>
+            <li style={{ color: '#cbd5e1' }}>• Chroniques Culturelles & Artistiques</li>
+            <li style={{ color: '#cbd5e1' }}>• Archives Numériques des Tirages Certifiés</li>
           </ul>
         </div>
 
-        {/* Colonne 3 : Infrastructure Cloud AWS */}
+        {/* Colonne 3 : Rédaction & Association */}
         <div>
-          <h4 style={{ color: '#ffffff', fontWeight: '600', marginBottom: '12px', fontSize: '13px' }}>
-            Services Cloud Utilisés (Région eu-west-3)
+          <h4 style={{ color: '#ffffff', fontWeight: '700', marginBottom: '14px', fontSize: '13.5px', letterSpacing: '0.02em' }}>
+            Comité de Rédaction
           </h4>
-          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '12px' }}>
-            <li>• <b>Amazon EC2 (t3.micro) :</b> Nginx + Node.js LTS + Typst</li>
-            <li>• <b>Amazon DynamoDB :</b> Arbitrage O(1) & Journal immuable</li>
-            <li>• <b>Amazon S3 :</b> Stockage privé sécurisé des PDF</li>
-            <li>• <b>Amazon SQS :</b> Découplage et lissage de charge du pic</li>
-            <li>• <b>Amazon SNS :</b> Notifications par e-mail sans serveur SMTP</li>
+          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12.5px' }}>
+            <li style={{ color: '#cbd5e1' }}>• Association des Étudiants du Campus</li>
+            <li style={{ color: '#cbd5e1' }}>• Rédaction collaborative en temps réel</li>
+            <li style={{ color: '#cbd5e1' }}>• Charte de déontologie journalistique</li>
+            <li style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#cbd5e1', marginTop: '4px' }}>
+              <Mail size={13} color="#a855f7" />
+              <span>Contact : redaction@etudiant.fr</span>
+            </li>
           </ul>
         </div>
       </div>
 
+      {/* Ligne inférieure de copyright */}
       <div style={{
         maxWidth: '1200px',
         margin: '0 auto',
@@ -69,14 +71,14 @@ export default function Footer() {
         alignItems: 'center',
         flexWrap: 'wrap',
         gap: '12px',
-        fontSize: '11px'
+        fontSize: '11.5px',
+        color: '#64748b'
       }}>
-        <span>© 2026 Association Étudiante • Projet d'évaluation Cloud & Développement Web</span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          Conçu avec <Heart size={12} color="#ec4899" /> et hébergé sous AWS Free Tier (&lt; 0,05 $ USD)
+        <span>© 2026 Revue Numérique — Association des Étudiants • Tous droits réservés</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          Édition universitaire collaborative certifiée
         </span>
       </div>
     </footer>
   );
 }
-

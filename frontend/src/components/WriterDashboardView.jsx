@@ -482,7 +482,7 @@ export default function WriterDashboardView({
                         {/* Bouton Versions */}
                         <button
                           onClick={() => onOpenVersions(doc.docId)}
-                          title="Historique des versions et snapshots T1 (C3)"
+                          title="Historique des versions et instantanés figés"
                           style={{
                             padding: '6px 9px',
                             backgroundColor: '#ffffff',
@@ -657,7 +657,7 @@ export default function WriterDashboardView({
 
                     <button
                       onClick={() => onOpenVersions(doc.docId)}
-                      title="Consulter l'historique des versions (C3)"
+                      title="Consulter l'historique des versions"
                       style={{
                         padding: '8px 12px',
                         backgroundColor: '#ffffff',
@@ -703,7 +703,7 @@ export default function WriterDashboardView({
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em'
                 }}>
-                  Contrainte C3 & EF06/EF07
+                  Historique & Sauvegardes Figées
                 </span>
               </div>
               <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em' }}>
@@ -922,11 +922,11 @@ export default function WriterDashboardView({
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em'
                 }}>
-                  Contrainte C1 & EF03/EF04
+                  Tirages & Parutions Publiques
                 </span>
               </div>
               <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em' }}>
-                Liens de Parution Publique (500 ex.)
+                Liens de Parution Publique
               </h1>
               <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>
                 Publications certifiées soumises au quota strict de 500 exemplaires et à la programmation horaire.
