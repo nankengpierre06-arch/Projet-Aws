@@ -4,10 +4,75 @@ import Footer from './components/Footer';
 import HomePage from './components/HomePage';
 import Editor from './components/Editor';
 import WriterSidebar from './components/WriterSidebar';
+import WriterDashboardView from './components/WriterDashboardView';
 import DownloadView from './components/DownloadView';
 import AdminDashboard from './components/AdminDashboard';
 import AuthModal from './components/AuthModal';
 import { ShareModal, CreateLinkModal, VersionsModal } from './components/Modals';
+
+const DEFAULT_OWNED_DOCS = [
+  {
+    docId: 'doc-alice-campus',
+    title: 'Enquête Campus : Logement & Mobilité Étudiante',
+    currentVersion: 1,
+    archived: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    docId: 'doc-revue-42',
+    title: 'Revue Étudiante n°42 — Innovations & Vie Universitaire',
+    currentVersion: 1,
+    archived: false,
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    updatedAt: new Date(Date.now() - 3600000).toISOString()
+  }
+];
+
+const DEFAULT_SHARED_DOCS = [
+  {
+    docId: 'revue-principale',
+    title: 'Revue Annuelle (Édition Collective)',
+    ownerEmail: 'admin@etudiant.fr',
+    currentVersion: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    docId: 'doc-bob-culture',
+    title: 'Chronique Culturelle & Festivals Universitaires',
+    ownerEmail: 'bob@etudiant.fr',
+    currentVersion: 1,
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
+    updatedAt: new Date(Date.now() - 7200000).toISOString()
+  }
+];
+
+const DEFAULT_NOTIFS = [
+  {
+    id: 'notif-1',
+    title: 'Nouvelle Collaboration',
+    message: 'L\'Administrateur vous a invité sur "Revue Annuelle".',
+    docId: 'revue-principale',
+    createdAt: new Date(Date.now() - 3600000).toISOString(),
+    read: false
+  },
+  {
+    id: 'notif-2',
+    title: 'Nouvelle Collaboration',
+    message: 'Bob Dupont vous a invité sur "Chronique Culturelle".',
+    docId: 'doc-bob-culture',
+    createdAt: new Date(Date.now() - 7200000).toISOString(),
+    read: false
+  },
+  {
+    id: 'notif-3',
+    title: 'Crédit Quotidien',
+    message: 'Crédit de 10 000 caractères prêt pour la rédaction.',
+    createdAt: new Date(Date.now() - 10800000).toISOString(),
+    read: true
+  }
+];
 
 export default function App() {
   // 1. Session Utilisateur (stockée dans localStorage)
@@ -20,20 +85,52 @@ export default function App() {
     }
   });
 
-  // 2. Vue active : 'home' | 'editor' | 'admin' | 'download'
+  // 2. Vue active globale : 'home' | 'editor' | 'admin' | 'download'
   const [currentView, setCurrentView] = useState('home');
 
-  // 3. Document et Liens
-  const [docId, setDocId] = useState('revue-principale');
+  // 3. Navigation dans l'Espace Rédacteur : 'DOCS' | 'SHARED' | 'NOTIFS' | 'EDITOR'
+  const [writerTab, setWriterTab] = useState('DOCS');
+
+  // 4. Documents et Données de Rédaction
+  const [docId, setDocId] = useState('doc-revue-42');
+  const [ownedDocs, setOwnedDocs] = useState(DEFAULT_OWNED_DOCS);
+  const [sharedDocs, setSharedDocs] = useState(DEFAULT_SHARED_DOCS);
+  const [notifications, setNotifications] = useState(DEFAULT_NOTIFS);
   const [downloadLinkId, setDownloadLinkId] = useState('revue-edition-42');
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
   const [dailyQuota, setDailyQuota] = useState({ used: 0, limit: 10000, remaining: 10000 });
 
-  // 4. Modales
+  // 5. Modales
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showCreateLinkModal, setShowCreateLinkModal] = useState(false);
   const [showVersionsModal, setShowVersionsModal] = useState(false);
+
+  // Synchronisation des documents et notifications avec le backend
+  const loadUserDocuments = () => {
+    if (!user || !user.email) return;
+
+    fetch(`/api/documents/user/${encodeURIComponent(user.email)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.ownedDocs && data.ownedDocs.length > 0) setOwnedDocs(data.ownedDocs);
+        if (data.sharedDocs && data.sharedDocs.length > 0) setSharedDocs(data.sharedDocs);
+      })
+      .catch(() => {});
+
+    fetch(`/api/documents/notifications/${encodeURIComponent(user.email)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) setNotifications(data);
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    loadUserDocuments();
+    const interval = setInterval(loadUserDocuments, 5000);
+    return () => clearInterval(interval);
+  }, [user?.email, sidebarRefreshKey]);
 
   // Détection d'accès direct par lien visiteur : #/download/:linkId ou /download/:linkId
   useEffect(() => {
@@ -89,6 +186,7 @@ export default function App() {
       setCurrentView('admin');
     } else {
       setCurrentView('editor');
+      setWriterTab('DOCS');
     }
   };
 
@@ -98,13 +196,103 @@ export default function App() {
     setCurrentView('home');
   };
 
+  // Actions Métier Rédacteur : Ouvrir, Créer, Archiver, Supprimer
+  const handleOpenDoc = (targetDocId) => {
+    setDocId(targetDocId);
+    setWriterTab('EDITOR');
+  };
+
+  const handleCreateDoc = async (title) => {
+    try {
+      const res = await fetch('/api/documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          ownerEmail: user.email
+        })
+      });
+
+      const data = await res.json();
+      const newDocId = data.docId || `doc-${Date.now()}`;
+      const newDocObj = {
+        docId: newDocId,
+        title: title,
+        ownerEmail: user.email,
+        authorizedWriters: [user.email],
+        currentVersion: 1,
+        archived: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      setOwnedDocs(prev => [newDocObj, ...prev]);
+      setDocId(newDocId);
+      setWriterTab('EDITOR');
+    } catch {
+      const fallbackId = `doc-${Date.now().toString(36)}`;
+      const fallbackDoc = {
+        docId: fallbackId,
+        title: title,
+        ownerEmail: user.email,
+        authorizedWriters: [user.email],
+        currentVersion: 1,
+        archived: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      setOwnedDocs(prev => [fallbackDoc, ...prev]);
+      setDocId(fallbackId);
+      setWriterTab('EDITOR');
+    }
+  };
+
+  const handleArchiveDoc = async (targetDocId, archived) => {
+    // Mise à jour optimiste locale immédiate
+    setOwnedDocs(prev => prev.map(d => d.docId === targetDocId ? { ...d, archived } : d));
+
+    try {
+      await fetch(`/api/documents/${targetDocId}/archive`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ archived, userEmail: user.email })
+      });
+    } catch {}
+  };
+
+  const handleDeleteDoc = async (targetDocId, title) => {
+    const confirmed = window.confirm(`Êtes-vous sûr de vouloir supprimer définitivement "${title || targetDocId}" ? Cette action est irréversible.`);
+    if (!confirmed) return;
+
+    setOwnedDocs(prev => prev.filter(d => d.docId !== targetDocId));
+    if (docId === targetDocId) {
+      setWriterTab('DOCS');
+    }
+
+    try {
+      await fetch(`/api/documents/${targetDocId}?userEmail=${encodeURIComponent(user.email)}`, {
+        method: 'DELETE'
+      });
+    } catch {}
+  };
+
+  const handleMarkNotifsRead = async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    try {
+      await fetch(`/api/documents/notifications/${encodeURIComponent(user.email)}/read`, { method: 'POST' });
+    } catch {}
+  };
+
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc' }}>
       {/* HEADER GLOBAL AVEC BOUTON D'AUTHENTIFICATION */}
       <Navbar
         user={user}
         currentView={currentView}
-        onViewChange={handleViewChange}
+        onViewChange={(view) => {
+          if (view === 'editor') setWriterTab('DOCS');
+          handleViewChange(view);
+        }}
         onOpenAuth={() => setShowAuthModal(true)}
         onLogout={handleLogout}
       />
@@ -123,7 +311,10 @@ export default function App() {
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             onOpenAuth={() => setShowAuthModal(true)}
-            onGoEditor={() => handleViewChange('editor')}
+            onGoEditor={() => {
+              setWriterTab('DOCS');
+              handleViewChange('editor');
+            }}
             onGoAdmin={() => handleViewChange('admin')}
           />
         )}
@@ -135,13 +326,22 @@ export default function App() {
           </div>
         )}
 
-        {/* 3. Espace Rédacteur (PROTÉGÉ : Rôle WRITER ou ADMIN) avec Sidebar */}
+        {/* 3. Espace Rédacteur avec Sidebar Persistante allant jusqu'en bas de page */}
         {currentView === 'editor' && user && (
-          <div style={{ flex: 1, display: 'flex', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+          <div style={{ flex: 1, display: 'flex', height: 'calc(100vh - 64px)', minHeight: 'calc(100vh - 64px)', overflow: 'hidden' }}>
+            {/* Sidebar persistante à gauche */}
             <WriterSidebar
               user={user}
+              activeTab={writerTab}
               activeDocId={docId}
-              onSelectDoc={(newDocId) => setDocId(newDocId)}
+              ownedDocs={ownedDocs}
+              sharedDocs={sharedDocs}
+              notifications={notifications}
+              onSelectTab={(tab) => setWriterTab(tab)}
+              onOpenDoc={handleOpenDoc}
+              onCreateDoc={handleCreateDoc}
+              onArchiveDoc={handleArchiveDoc}
+              onDeleteDoc={handleDeleteDoc}
               onOpenCreateLink={(targetDocId) => {
                 if (targetDocId) setDocId(targetDocId);
                 setShowCreateLinkModal(true);
@@ -150,19 +350,45 @@ export default function App() {
                 if (targetDocId) setDocId(targetDocId);
                 setShowVersionsModal(true);
               }}
-              refreshTrigger={sidebarRefreshKey}
+              onMarkNotifsRead={handleMarkNotifsRead}
               quota={dailyQuota}
             />
-            <div style={{ flex: 1, height: '100%', overflow: 'hidden' }}>
-              <Editor
+
+            {/* Zone Principale à droite : Éditeur ou Dashboard selon le toggle actif */}
+            {writerTab === 'EDITOR' ? (
+              <div style={{ flex: 1, height: '100%', overflow: 'hidden' }}>
+                <Editor
+                  user={user}
+                  docId={docId}
+                  onOpenShare={() => setShowShareModal(true)}
+                  onOpenCreateLink={() => setShowCreateLinkModal(true)}
+                  onOpenVersions={() => setShowVersionsModal(true)}
+                  onQuotaUpdate={setDailyQuota}
+                  onBackToDocs={() => setWriterTab('DOCS')}
+                />
+              </div>
+            ) : (
+              <WriterDashboardView
+                activeTab={writerTab}
                 user={user}
-                docId={docId}
-                onOpenShare={() => setShowShareModal(true)}
-                onOpenCreateLink={() => setShowCreateLinkModal(true)}
-                onOpenVersions={() => setShowVersionsModal(true)}
-                onQuotaUpdate={setDailyQuota}
+                ownedDocs={ownedDocs}
+                sharedDocs={sharedDocs}
+                notifications={notifications}
+                onOpenDoc={handleOpenDoc}
+                onCreateDoc={handleCreateDoc}
+                onArchiveDoc={handleArchiveDoc}
+                onDeleteDoc={handleDeleteDoc}
+                onOpenCreateLink={(targetDocId) => {
+                  if (targetDocId) setDocId(targetDocId);
+                  setShowCreateLinkModal(true);
+                }}
+                onOpenVersions={(targetDocId) => {
+                  if (targetDocId) setDocId(targetDocId);
+                  setShowVersionsModal(true);
+                }}
+                onMarkNotifsRead={handleMarkNotifsRead}
               />
-            </div>
+            )}
           </div>
         )}
 
@@ -171,13 +397,16 @@ export default function App() {
           <div style={{ flex: 1 }}>
             <AdminDashboard
               onBackToHome={() => setCurrentView('home')}
-              onGoEditor={() => setCurrentView('editor')}
+              onGoEditor={() => {
+                setWriterTab('DOCS');
+                setCurrentView('editor');
+              }}
             />
           </div>
         )}
       </main>
 
-      {/* FOOTER GLOBAL (Affiché sur Accueil et Téléchargement) */}
+      {/* FOOTER GLOBAL (Affiché uniquement sur Accueil et Téléchargement) */}
       {(currentView === 'home' || currentView === 'download') && <Footer />}
 
       {/* MODALE D'AUTHENTIFICATION */}

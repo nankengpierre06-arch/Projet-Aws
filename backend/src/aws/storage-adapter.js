@@ -379,6 +379,7 @@ class StorageAdapter {
           ownerEmail: val.ownerEmail,
           authorizedWriters: val.authorizedWriters || [],
           currentVersion: val.currentVersion || 1,
+          archived: Boolean(val.archived),
           createdAt: val.createdAt,
           updatedAt: val.updatedAt
         };
@@ -422,6 +423,46 @@ class StorageAdapter {
     const list = localStore.notifications.get(cleanEmail) || [];
     list.forEach(n => { n.read = true; });
     return { success: true, count: list.length };
+  }
+
+  async archiveDocument(docId, archived = true) {
+    const doc = await this.getDocumentMetadata(docId);
+    if (!doc) return null;
+    doc.archived = Boolean(archived);
+    doc.updatedAt = new Date().toISOString();
+
+    localStore.items.set(`DOC#${docId}#META`, doc);
+
+    if (!this.forceMock && dynamoDoc) {
+      try {
+        await dynamoDoc.send(new PutCommand({
+          TableName: this.tableName,
+          Item: doc
+        }));
+      } catch {}
+    }
+    return doc;
+  }
+
+  async deleteDocument(docId) {
+    localStore.items.delete(`DOC#${docId}#META`);
+
+    // Nettoyer les versions
+    for (const key of localStore.items.keys()) {
+      if (key.startsWith(`DOC#${docId}#VER#`)) {
+        localStore.items.delete(key);
+      }
+    }
+
+    if (!this.forceMock && dynamoDoc) {
+      try {
+        await dynamoDoc.send(new DeleteCommand({
+          TableName: this.tableName,
+          Key: { PK: `DOC#${docId}`, SK: 'META' }
+        }));
+      } catch {}
+    }
+    return true;
   }
 
   // ===========================================================================

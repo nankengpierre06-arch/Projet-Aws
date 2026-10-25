@@ -136,4 +136,45 @@ router.post('/:docId/restore/:versionSeq', async (req, res) => {
   });
 });
 
+// 7. Archiver ou désarchiver un document (EF01 / Gestion Rédacteur)
+router.patch('/:docId/archive', async (req, res) => {
+  const { docId } = req.params;
+  const { archived = true, userEmail } = req.body;
+  const doc = await storage.getDocumentMetadata(docId);
+  if (!doc) {
+    return res.status(404).json({ error: 'DOCUMENT_NOT_FOUND', message: 'Document introuvable.' });
+  }
+
+  // Seul le propriétaire ou un administrateur peut modifier l'état d'archivage
+  if (userEmail && doc.ownerEmail !== userEmail && userEmail !== 'admin@etudiant.fr') {
+    return res.status(403).json({ error: 'FORBIDDEN', message: 'Seul le propriétaire du document peut l\'archiver.' });
+  }
+
+  const updated = await storage.archiveDocument(docId, archived);
+  return res.json({
+    message: archived ? 'Document archivé avec succès.' : 'Document restauré des archives.',
+    docId,
+    archived: Boolean(archived),
+    document: updated
+  });
+});
+
+// 8. Supprimer un document (EF01 / Gestion Rédacteur)
+router.delete('/:docId', async (req, res) => {
+  const { docId } = req.params;
+  const userEmail = req.query.userEmail || req.body?.userEmail;
+  const doc = await storage.getDocumentMetadata(docId);
+  if (!doc) {
+    return res.status(404).json({ error: 'DOCUMENT_NOT_FOUND', message: 'Document introuvable.' });
+  }
+
+  // Seul le propriétaire ou un administrateur peut supprimer le document
+  if (userEmail && doc.ownerEmail !== userEmail && userEmail !== 'admin@etudiant.fr') {
+    return res.status(403).json({ error: 'FORBIDDEN', message: 'Seul le propriétaire peut supprimer ce document.' });
+  }
+
+  await storage.deleteDocument(docId);
+  return res.json({ message: 'Document supprimé définitivement.', docId });
+});
+
 module.exports = router;

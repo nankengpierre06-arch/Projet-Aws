@@ -5,7 +5,7 @@ import { QuillBinding } from 'y-quill';
 import { WebsocketProvider } from 'y-websocket';
 import { 
   Users, Share2, Download, History, ShieldAlert, CheckCircle, 
-  Clock, AlertTriangle, FileText, UserPlus, Sparkles, Check
+  Clock, AlertTriangle, FileText, UserPlus, Sparkles, Check, ChevronLeft
 } from 'lucide-react';
 
 const COLORS = ['#7c3aed', '#2563eb', '#16a34a', '#d97706', '#dc2626', '#db2777', '#0891b2', '#4f46e5'];
@@ -39,7 +39,8 @@ export default function Editor({
   onOpenShare, 
   onOpenCreateLink, 
   onOpenVersions,
-  onQuotaUpdate
+  onQuotaUpdate,
+  onBackToDocs
 }) {
   const editorRef = useRef(null);
   const quillInstance = useRef(null);
@@ -229,7 +230,32 @@ export default function Editor({
         boxShadow: '0 1px 2px rgba(0, 0, 0, 0.03)'
       }}>
         {/* Titre et statut de synchronisation */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+          {onBackToDocs && (
+            <button
+              onClick={onBackToDocs}
+              title="Retourner à la liste de mes documents"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '6px 10px',
+                backgroundColor: '#f1f5f9',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                fontSize: '12px',
+                fontWeight: '600',
+                color: '#334155',
+                cursor: 'pointer',
+                flexShrink: 0
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+            >
+              <ChevronLeft size={16} /> Documents
+            </button>
+          )}
+
           <div style={{
             width: '34px',
             height: '34px',
