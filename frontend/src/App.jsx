@@ -10,90 +10,6 @@ import AdminDashboard from './components/AdminDashboard';
 import AuthModal from './components/AuthModal';
 import { ShareModal, CreateLinkModal, VersionsModal } from './components/Modals';
 
-const DEFAULT_OWNED_DOCS = [
-  {
-    docId: 'doc-alice-campus',
-    title: 'Enquête Campus : Logement & Mobilité Étudiante',
-    currentVersion: 1,
-    archived: false,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    docId: 'doc-revue-42',
-    title: 'Revue Étudiante n°42 — Innovations & Vie Universitaire',
-    currentVersion: 1,
-    archived: false,
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000).toISOString()
-  }
-];
-
-const DEFAULT_SHARED_DOCS = [
-  {
-    docId: 'doc-guide-etudiant',
-    title: 'Guide d\'Accueil & Intégration des Nouveaux Étudiants',
-    ownerEmail: 'admin@etudiant.fr',
-    currentVersion: 1,
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000).toISOString()
-  }
-];
-
-const DEFAULT_PENDING_DOCS = [
-  {
-    docId: 'revue-principale',
-    title: 'Revue Annuelle (Édition Collective)',
-    ownerEmail: 'admin@etudiant.fr',
-    currentVersion: 1,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    docId: 'doc-bob-culture',
-    title: 'Chronique Culturelle & Festivals Universitaires',
-    ownerEmail: 'bob@etudiant.fr',
-    currentVersion: 1,
-    createdAt: new Date(Date.now() - 7200000).toISOString(),
-    updatedAt: new Date(Date.now() - 7200000).toISOString()
-  }
-];
-
-const DEFAULT_NOTIFS = [
-  {
-    id: 'notif-1',
-    type: 'INVITE',
-    title: 'Invitation à collaborer',
-    message: 'L\'Administrateur vous a invité à collaborer sur "Revue Annuelle (Édition Collective)".',
-    docId: 'revue-principale',
-    inviterEmail: 'admin@etudiant.fr',
-    docTitle: 'Revue Annuelle (Édition Collective)',
-    status: 'PENDING',
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-    read: false
-  },
-  {
-    id: 'notif-2',
-    type: 'INVITE',
-    title: 'Invitation à collaborer',
-    message: 'Bob Dupont vous a invité à collaborer sur "Chronique Culturelle & Festivals".',
-    docId: 'doc-bob-culture',
-    inviterEmail: 'bob@etudiant.fr',
-    docTitle: 'Chronique Culturelle & Festivals Universitaires',
-    status: 'PENDING',
-    createdAt: new Date(Date.now() - 7200000).toISOString(),
-    read: false
-  },
-  {
-    id: 'notif-3',
-    type: 'QUOTA',
-    title: 'Crédit Quotidien',
-    message: 'Crédit de 10 000 caractères prêt pour la rédaction.',
-    createdAt: new Date(Date.now() - 10800000).toISOString(),
-    read: true
-  }
-];
-
 export default function App() {
   // 1. Session Utilisateur (stockée dans localStorage)
   const [user, setUser] = useState(() => {
@@ -111,12 +27,12 @@ export default function App() {
   // 3. Navigation dans l'Espace Rédacteur : 'DOCS' | 'SHARED' | 'NOTIFS' | 'EDITOR'
   const [writerTab, setWriterTab] = useState('DOCS');
 
-  // 4. Documents et Données de Rédaction
+  // 4. Documents et Données de Rédaction (100% dynamiques depuis le backend)
   const [docId, setDocId] = useState('doc-revue-42');
-  const [ownedDocs, setOwnedDocs] = useState(DEFAULT_OWNED_DOCS);
-  const [sharedDocs, setSharedDocs] = useState(DEFAULT_SHARED_DOCS);
-  const [pendingDocs, setPendingDocs] = useState(DEFAULT_PENDING_DOCS);
-  const [notifications, setNotifications] = useState(DEFAULT_NOTIFS);
+  const [ownedDocs, setOwnedDocs] = useState([]);
+  const [sharedDocs, setSharedDocs] = useState([]);
+  const [pendingDocs, setPendingDocs] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [publications, setPublications] = useState([]);
   const [downloadLinkId, setDownloadLinkId] = useState('revue-edition-42');
   const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
@@ -133,27 +49,42 @@ export default function App() {
     if (!user || !user.email) return;
 
     fetch(`/api/documents/user/${encodeURIComponent(user.email)}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.ownedDocs) setOwnedDocs(data.ownedDocs);
-        if (data.sharedDocs) setSharedDocs(data.sharedDocs);
-        if (data.pendingDocs) setPendingDocs(data.pendingDocs);
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
       })
-      .catch(() => {});
+      .then(data => {
+        setOwnedDocs(data.ownedDocs || []);
+        setSharedDocs(data.sharedDocs || []);
+        setPendingDocs(data.pendingDocs || []);
+      })
+      .catch(err => {
+        console.warn('[API] Erreur chargement documents :', err.message);
+      });
 
     fetch(`/api/documents/notifications/${encodeURIComponent(user.email)}`)
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then(data => {
         if (Array.isArray(data)) setNotifications(data);
       })
-      .catch(() => {});
+      .catch(err => {
+        console.warn('[API] Erreur chargement notifications :', err.message);
+      });
 
     fetch('/api/links')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) setPublications(data);
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
       })
-      .catch(() => {});
+      .then(data => {
+        if (Array.isArray(data)) setPublications(data);
+      })
+      .catch(err => {
+        console.warn('[API] Erreur chargement parutions :', err.message);
+      });
   };
 
   useEffect(() => {

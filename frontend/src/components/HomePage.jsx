@@ -5,45 +5,9 @@ import {
   Loader2, Check
 } from 'lucide-react';
 
-const DEFAULT_PUBLICATIONS = [
-  {
-    linkId: 'revue-edition-42',
-    docId: 'doc-revue-42',
-    title: 'Revue Étudiante n°42 — Innovations & Vie Universitaire',
-    description: 'Grand dossier sur les projets étudiants, les innovations technologiques et la vie associative du campus universitaire.',
-    scheduledAt: new Date(Date.now() - 3600000).toISOString(),
-    versionSeq: 1,
-    maxPlaces: 500,
-    places_restantes: 468,
-    status: 'OPEN'
-  },
-  {
-    linkId: 'revue-edition-43',
-    docId: 'doc-revue-43',
-    title: 'Revue Étudiante n°43 — Édition Spéciale : Intelligence Artificielle & Avenir',
-    description: 'Dossier exclusif rédigé par plus de 300 étudiants. Tribunes de prospective, éthique algorithmique et interviews d\'enseignants-chercheurs.',
-    scheduledAt: new Date(Date.now() + 86400000).toISOString(),
-    versionSeq: 1,
-    maxPlaces: 500,
-    places_restantes: 500,
-    status: 'UPCOMING'
-  },
-  {
-    linkId: 'revue-edition-41',
-    docId: 'doc-revue-41',
-    title: 'Revue Étudiante n°41 — Bilan Annuel & Projets d\'Automne',
-    description: 'Rétrospective complète des initiatives étudiantes, création artistique et tribunes libres de la rentrée.',
-    scheduledAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-    versionSeq: 1,
-    maxPlaces: 500,
-    places_restantes: 0,
-    status: 'EXHAUSTED'
-  }
-];
-
 export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, onGoAdmin }) {
-  const [publications, setPublications] = useState(DEFAULT_PUBLICATIONS);
-  const [loading, setLoading] = useState(false);
+  const [publications, setPublications] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(new Date());
   const [filter, setFilter] = useState('ALL'); // 'ALL' | 'OPEN' | 'UPCOMING'
   const [downloadingId, setDownloadingId] = useState(null);
@@ -143,17 +107,23 @@ export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, o
     return () => clearInterval(timer);
   }, []);
 
-  // 2. Synchronisation des parutions en production depuis l'API
+  // 2. Synchronisation dynamique des parutions en production depuis l'API
   const fetchPublications = () => {
     fetch('/api/publications')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('API indisponible');
+        return res.json();
+      })
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (Array.isArray(data)) {
           setPublications(data);
         }
       })
-      .catch(() => {
-        // En cas de non disponibilité temporaire de l'API, les publications par défaut restent affichées
+      .catch(err => {
+        console.warn('[HomePage] Impossible de charger les parutions :', err.message);
+      })
+      .finally(() => {
+        setLoading(false);
       });
   };
 

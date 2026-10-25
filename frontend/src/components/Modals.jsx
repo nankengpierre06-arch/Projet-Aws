@@ -161,7 +161,7 @@ export function CreateLinkModal({ docId, user, userEmail, onClose, onLinkCreated
               />
 
               {/* DATE ET HEURE D'ANNONCE : VISIBLE ET MODIFIABLE UNIQUEMENT PAR L'ADMIN */}
-              {isAdmin ? (
+              {isAdmin && (
                 <div style={{ marginBottom: '14px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                   <label style={{ fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', color: '#1e293b' }}>
                     <Calendar size={14} color="#4338ca" />
@@ -199,27 +199,6 @@ export function CreateLinkModal({ docId, user, userEmail, onClose, onLinkCreated
                       required={!isImmediate}
                     />
                   )}
-                </div>
-              ) : (
-                <div style={{
-                  marginBottom: '14px',
-                  padding: '12px 14px',
-                  backgroundColor: '#f8fafc',
-                  borderRadius: '8px',
-                  border: '1px solid #e2e8f0',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '10px'
-                }}>
-                  <Lock size={16} color="#7c3aed" style={{ marginTop: '2px', flexShrink: 0 }} />
-                  <div>
-                    <div style={{ fontSize: '12px', fontWeight: '700', color: '#1e293b', marginBottom: '2px' }}>
-                      Programmation réservée à l'Administration
-                    </div>
-                    <div style={{ fontSize: '11.5px', color: '#64748b', lineHeight: '1.4' }}>
-                      En tant que rédacteur, vous générez le lien de parution. La date et l'heure d'annonce officielle du tirage seront fixées exclusivement par l'administrateur.
-                    </div>
-                  </div>
                 </div>
               )}
 
