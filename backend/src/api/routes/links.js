@@ -1,5 +1,5 @@
 /**
- * Routes de gestion des liens de partage et quotas de téléchargement
+ * Routes de gestion des liens de parution et des publications en production
  * Conforme aux exigences fonctionnelles EF03, EF04, EF05 et Contrainte C1
  */
 const express = require('express');
@@ -8,13 +8,27 @@ const crypto = require('crypto');
 const storage = require('../../aws/storage-adapter');
 const config = require('../../config');
 
-// Création d'un lien de partage avec quota N (défaut N=500, C1)
+// 1. Récupération de toutes les parutions en production (Annoncées ou Actives)
+router.get('/', async (req, res) => {
+  const publications = await storage.listPublicPublications();
+  return res.json(publications);
+});
+
+router.get('/public', async (req, res) => {
+  const publications = await storage.listPublicPublications();
+  return res.json(publications);
+});
+
+// 2. Création d'un lien de parution avec quota N (défaut N=500) et date/heure annoncée
 router.post('/', async (req, res) => {
   const {
     docId,
     versionSeq = 1,
     maxPlaces = config.business.maxDownloadsDefault,
-    creatorEmail = 'auteur@etudiant.fr'
+    creatorEmail = 'auteur@etudiant.fr',
+    title,
+    description,
+    scheduledAt
   } = req.body;
 
   if (!docId) {
@@ -22,29 +36,48 @@ router.post('/', async (req, res) => {
   }
 
   const linkId = `revue-${crypto.randomBytes(4).toString('hex')}`;
-  const link = await storage.createDownloadLink(linkId, docId, versionSeq, maxPlaces, creatorEmail);
+  const link = await storage.createDownloadLink(
+    linkId,
+    docId,
+    versionSeq,
+    maxPlaces,
+    creatorEmail,
+    { title, description, scheduledAt }
+  );
 
   return res.status(201).json({
-    message: 'Lien de téléchargement public créé avec succès',
+    message: 'Lien de parution créé avec succès',
     linkId,
     publicUrl: `/download/${linkId}`,
+    title: link.title,
+    description: link.description,
+    scheduledAt: link.scheduledAt,
     maxPlaces: link.maxPlaces,
     places_restantes: link.places_restantes,
     creatorEmail: link.creatorEmail
   });
 });
 
-// Récupération des informations d'un lien
+// 3. Récupération des informations d'une parution spécifique
 router.get('/:linkId', async (req, res) => {
   const { linkId } = req.params;
   const link = await storage.getLink(linkId);
 
   if (!link) {
-    return res.status(404).json({ error: 'LINK_NOT_FOUND' });
+    return res.status(404).json({ error: 'LINK_NOT_FOUND', message: 'Parution introuvable' });
   }
 
-  return res.json(link);
+  const now = Date.now();
+  const scheduledTime = link.scheduledAt ? new Date(link.scheduledAt).getTime() : 0;
+  const isUpcoming = scheduledTime > now;
+  const isExhausted = link.places_restantes <= 0;
+
+  return res.json({
+    ...link,
+    isUpcoming,
+    isOpen: !isUpcoming && !isExhausted,
+    isExhausted
+  });
 });
 
 module.exports = router;
-

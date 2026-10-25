@@ -1,51 +1,99 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Download, Users, Shield, Zap, BookOpen, CheckCircle, 
-  ArrowRight, Clock, Award, Lock, FileCheck 
+  Download, Clock, Calendar, Lock, CheckCircle, 
+  ArrowRight, Shield, BookOpen, Sparkles, AlertCircle, FileText
 } from 'lucide-react';
 
 export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, onGoAdmin }) {
-  const [dashboardData, setDashboardData] = useState(null);
+  const [publications, setPublications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [now, setNow] = useState(new Date());
+  const [filter, setFilter] = useState('ALL'); // 'ALL' | 'OPEN' | 'UPCOMING'
 
+  // 1. Horloge temps réel (rafraîchissement chaque seconde pour bascule automatique des boutons)
   useEffect(() => {
-    fetch('/api/admin/dashboard')
-      .then(res => res.json())
-      .then(data => setDashboardData(data))
-      .catch(() => {});
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
-  const activeLink = dashboardData?.activeLinks?.[0];
-  const placesRestantes = activeLink ? activeLink.places_restantes : 500;
-  const isExhausted = placesRestantes <= 0;
+  // 2. Chargement des parutions en production depuis l'API
+  const fetchPublications = () => {
+    fetch('/api/publications')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setPublications(data);
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchPublications();
+    // Rafraîchir les parutions toutes les 8 secondes pour suivre les quotas en direct
+    const pollInterval = setInterval(fetchPublications, 8000);
+    return () => clearInterval(pollInterval);
+  }, []);
+
+  // Calcul du temps restant avant ouverture
+  const getCountdownString = (scheduledDateStr) => {
+    if (!scheduledDateStr) return '';
+    const target = new Date(scheduledDateStr).getTime();
+    const diff = target - now.getTime();
+    if (diff <= 0) return 'Ouverture imminente';
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+  };
+
+  // Filtrage des parutions
+  const filteredPubs = publications.filter(pub => {
+    const scheduledTime = pub.scheduledAt ? new Date(pub.scheduledAt).getTime() : 0;
+    const isUpcoming = scheduledTime > now.getTime();
+    const isExhausted = pub.places_restantes <= 0;
+    const isOpen = !isUpcoming && !isExhausted;
+
+    if (filter === 'OPEN') return isOpen;
+    if (filter === 'UPCOMING') return isUpcoming;
+    return true;
+  });
 
   return (
-    <div style={{ backgroundColor: '#ffffff' }}>
+    <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
       {/* 1. HERO SECTION */}
       <section style={{
-        background: 'linear-gradient(135deg, #2e1065 0%, #581c87 50%, #3b0764 100%)',
+        background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 100%)',
         color: '#ffffff',
-        padding: '80px 24px 70px',
+        padding: '75px 24px 65px',
         textAlign: 'center',
-        position: 'relative',
-        overflow: 'hidden'
+        position: 'relative'
       }}>
-        <div style={{ maxWidth: '850px', margin: '0 auto', position: 'relative', zIndex: 2 }}>
+        <div style={{ maxWidth: '880px', margin: '0 auto', position: 'relative', zIndex: 2 }}>
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
-            padding: '6px 16px',
+            padding: '6px 18px',
             borderRadius: '20px',
             backgroundColor: 'rgba(255, 255, 255, 0.12)',
             backdropFilter: 'blur(8px)',
             fontSize: '12px',
             fontWeight: '600',
             letterSpacing: '0.5px',
-            marginBottom: '24px',
+            marginBottom: '20px',
             border: '1px solid rgba(255, 255, 255, 0.2)'
           }}>
-            <Award size={15} color="#facc15" />
-            ÉDITION OFFICIELLE 2026 • ASSOCIATION ÉTUDIANTE
+            <Sparkles size={15} color="#facc15" />
+            JOURNAL ÉTUDIANT OFFICIEL • PARUTIONS À DATE ET HEURE PRÉCISES
           </div>
 
           <h1 style={{
@@ -53,54 +101,51 @@ export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, o
             fontWeight: '800',
             lineHeight: '1.15',
             letterSpacing: '-1px',
-            marginBottom: '18px'
+            marginBottom: '16px'
           }}>
-            La Revue Numérique Annuelle
+            La Revue Numérique du Campus
           </h1>
 
           <p style={{
             fontSize: '18px',
-            color: '#e9d5ff',
+            color: '#e0e7ff',
             lineHeight: '1.6',
-            marginBottom: '36px',
-            maxWidth: '700px',
-            margin: '0 auto 36px'
+            maxWidth: '720px',
+            margin: '0 auto 32px'
           }}>
-            Rédigée en temps réel par plusieurs centaines d'étudiants sur une architecture sans conflit,
-            et distribuée au public sous un tirage limité à <b>500 exemplaires certifiés</b>.
+            Chaque numéro est préparé par la rédaction étudiante et programmé pour une publication à une date et une heure précises.
+            Le tirage est limité à <b>500 exemplaires certifiés</b> par parution.
           </p>
 
-          {/* Boutons d'Action Principaux */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
-            <button
-              onClick={onGoDownload}
+          {/* Boutons d'Action Rapides */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '14px', flexWrap: 'wrap' }}>
+            <a
+              href="#parutions"
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                gap: '10px',
-                padding: '14px 28px',
-                backgroundColor: isExhausted ? '#64748b' : '#22c55e',
-                color: '#ffffff',
-                border: 'none',
+                gap: '8px',
+                padding: '13px 26px',
+                backgroundColor: '#ffffff',
+                color: '#312e81',
                 borderRadius: '8px',
                 fontSize: '15px',
                 fontWeight: '700',
-                boxShadow: '0 10px 20px -5px rgba(34, 197, 94, 0.4)',
-                cursor: 'pointer'
+                textDecoration: 'none',
+                boxShadow: '0 10px 20px -5px rgba(0, 0, 0, 0.2)'
               }}
             >
-              <Download size={18} />
-              {isExhausted ? 'Quota de 500 ex. Épuisé' : 'Télécharger un Exemplaire Gratuit'}
-            </button>
+              <BookOpen size={18} /> Consulter les Numéros
+            </a>
 
             {!user ? (
               <button
                 onClick={onOpenAuth}
                 style={{
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '10px',
-                  padding: '14px 26px',
+                  gap: '8px',
+                  padding: '13px 24px',
                   backgroundColor: 'rgba(255, 255, 255, 0.15)',
                   color: '#ffffff',
                   border: '1px solid rgba(255, 255, 255, 0.3)',
@@ -117,10 +162,10 @@ export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, o
               <button
                 onClick={onGoAdmin}
                 style={{
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '10px',
-                  padding: '14px 26px',
+                  gap: '8px',
+                  padding: '13px 24px',
                   backgroundColor: '#facc15',
                   color: '#713f12',
                   border: 'none',
@@ -136,12 +181,12 @@ export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, o
               <button
                 onClick={onGoEditor}
                 style={{
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '10px',
-                  padding: '14px 26px',
+                  gap: '8px',
+                  padding: '13px 24px',
                   backgroundColor: '#ffffff',
-                  color: 'var(--primary)',
+                  color: '#4338ca',
                   border: 'none',
                   borderRadius: '8px',
                   fontSize: '15px',
@@ -149,130 +194,385 @@ export default function HomePage({ onGoDownload, onOpenAuth, user, onGoEditor, o
                   cursor: 'pointer'
                 }}
               >
-                Ouvrir mon Éditeur de Texte <ArrowRight size={16} />
+                Accéder à l'Éditeur <ArrowRight size={16} />
               </button>
             )}
           </div>
         </div>
       </section>
 
-      {/* 2. CARTE STATUT DE LA PARUTION (CONTRAINTE C1) */}
-      <section style={{ maxWidth: '1050px', margin: '-35px auto 60px', padding: '0 24px', position: 'relative', zIndex: 10 }}>
+      {/* 2. SECTION DES DOCUMENTS EN PRODUCTION (ANNONCÉS ET EN COURS) */}
+      <section id="parutions" style={{ maxWidth: '1100px', margin: '0 auto', padding: '50px 24px 80px' }}>
+        
+        {/* En-tête de section avec horloge officielle */}
         <div style={{
-          backgroundColor: '#ffffff',
-          borderRadius: '12px',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-          padding: '28px 36px',
-          border: '1px solid var(--border)',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: '24px',
-          alignItems: 'center'
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-end',
+          flexWrap: 'wrap',
+          gap: '20px',
+          marginBottom: '32px',
+          paddingBottom: '16px',
+          borderBottom: '2px solid #e2e8f0'
         }}>
           <div>
-            <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Statut de la Parution
+            <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#6366f1', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              Kiosque de la Rédaction
             </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
-              <span style={{
-                display: 'inline-block',
-                width: '10px',
-                height: '10px',
-                borderRadius: '50%',
-                backgroundColor: isExhausted ? '#ef4444' : '#22c55e'
-              }} />
-              <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#0f172a' }}>
-                {isExhausted ? 'Tirage Épuisé' : 'Disponible en Ligne'}
-              </span>
-            </div>
-            <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-              {isExhausted ? 'Les 500 exemplaires ont été distribués' : 'Téléchargement direct au format PDF'}
+            <h2 style={{ fontSize: '30px', fontWeight: '800', color: '#0f172a', marginTop: '4px' }}>
+              Documents & Parutions en Production
+            </h2>
+            <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>
+              Téléchargez votre exemplaire certifié pour les parutions ouvertes, ou consultez les tirages programmés.
             </p>
           </div>
 
-          <div>
-            <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Places Restantes (Contrainte C1)
-            </span>
-            <div style={{ fontSize: '24px', fontWeight: '800', color: isExhausted ? '#ef4444' : 'var(--primary)', marginTop: '4px' }}>
-              {placesRestantes} <span style={{ fontSize: '14px', fontWeight: '500', color: '#64748b' }}>/ 500 exemplaires</span>
+          {/* Horloge officielle de référence */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            backgroundColor: '#ffffff',
+            padding: '10px 18px',
+            borderRadius: '8px',
+            border: '1px solid #cbd5e1',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.04)'
+          }}>
+            <Clock size={18} color="#4338ca" />
+            <div>
+              <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>
+                Heure Officielle
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a', fontFamily: 'monospace' }}>
+                {now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+              </div>
             </div>
-            <div style={{ width: '100%', height: '6px', backgroundColor: '#e2e8f0', borderRadius: '3px', marginTop: '8px', overflow: 'hidden' }}>
-              <div style={{
-                width: `${Math.max(0, Math.min(100, (placesRestantes / 500) * 100))}%`,
-                height: '100%',
-                backgroundColor: isExhausted ? '#ef4444' : '#22c55e'
-              }} />
-            </div>
-          </div>
-
-          <div>
-            <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              Rédacteurs en Ligne
-            </span>
-            <div style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', marginTop: '4px' }}>
-              {dashboardData?.summary?.totalOpenDocuments || 1} doc(s) actif(s)
-            </div>
-            <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-              Édition collaborative instantanée
-            </p>
           </div>
         </div>
+
+        {/* Filtres de sélection */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '28px', flexWrap: 'wrap' }}>
+          {[
+            { id: 'ALL', label: 'Toutes les parutions' },
+            { id: 'OPEN', label: 'Tirage Ouvert (Actif)' },
+            { id: 'UPCOMING', label: 'À paraître (Annoncé)' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setFilter(tab.id)}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '6px',
+                border: '1px solid',
+                borderColor: filter === tab.id ? '#4338ca' : '#cbd5e1',
+                backgroundColor: filter === tab.id ? '#4338ca' : '#ffffff',
+                color: filter === tab.id ? '#ffffff' : '#334155',
+                fontSize: '13px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Grille des Parutions */}
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px 0', color: '#64748b' }}>
+            <Clock size={32} style={{ animation: 'spin 1.5s linear infinite', margin: '0 auto 12px' }} />
+            <p>Chargement des documents en production...</p>
+          </div>
+        ) : filteredPubs.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', backgroundColor: '#ffffff', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+            <FileText size={40} color="#94a3b8" style={{ margin: '0 auto 12px' }} />
+            <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: '#1e293b' }}>Aucune parution dans cette catégorie</h3>
+            <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>Modifiez votre filtre pour afficher l'ensemble des numéros disponibles.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))', gap: '24px' }}>
+            {filteredPubs.map(pub => {
+              const scheduledTime = pub.scheduledAt ? new Date(pub.scheduledAt).getTime() : 0;
+              const isUpcoming = scheduledTime > now.getTime();
+              const isExhausted = pub.places_restantes <= 0;
+              const isOpen = !isUpcoming && !isExhausted;
+              const scheduledDateObj = pub.scheduledAt ? new Date(pub.scheduledAt) : null;
+
+              return (
+                <div
+                  key={pub.linkId}
+                  style={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: '12px',
+                    border: isOpen ? '2px solid #a5b4fc' : '1px solid #e2e8f0',
+                    boxShadow: isOpen 
+                      ? '0 10px 25px -5px rgba(99, 102, 241, 0.15), 0 8px 10px -6px rgba(99, 102, 241, 0.1)' 
+                      : '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                  }}
+                >
+                  {/* Bandeau d'état */}
+                  <div style={{
+                    padding: '12px 18px',
+                    backgroundColor: isOpen ? '#eef2ff' : (isUpcoming ? '#fef3c7' : '#f1f5f9'),
+                    borderBottom: '1px solid #e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    {/* Statut Badge */}
+                    {isOpen && (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        color: '#16a34a'
+                      }}>
+                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#16a34a', display: 'inline-block' }} />
+                        TIRAGE OUVERT
+                      </span>
+                    )}
+
+                    {isUpcoming && (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        color: '#b45309'
+                      }}>
+                        <Clock size={14} color="#b45309" />
+                        À PARAÎTRE (ANNONCÉ)
+                      </span>
+                    )}
+
+                    {isExhausted && (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        color: '#64748b'
+                      }}>
+                        <AlertCircle size={14} color="#64748b" />
+                        TIRAGE ÉPUISÉ
+                      </span>
+                    )}
+
+                    {/* Format / Version */}
+                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
+                      Édition v{pub.versionSeq || 1}
+                    </span>
+                  </div>
+
+                  {/* Contenu de la Carte */}
+                  <div style={{ padding: '22px 20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', marginBottom: '8px', lineHeight: '1.3' }}>
+                      {pub.title}
+                    </h3>
+
+                    <p style={{ fontSize: '13px', color: '#475569', lineHeight: '1.5', marginBottom: '18px', flex: 1 }}>
+                      {pub.description}
+                    </p>
+
+                    {/* Bloc Date et Heure Annoncées */}
+                    <div style={{
+                      backgroundColor: isUpcoming ? '#fffbeb' : '#f8fafc',
+                      padding: '12px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid',
+                      borderColor: isUpcoming ? '#fde68a' : '#e2e8f0',
+                      marginBottom: '18px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '700', color: isUpcoming ? '#b45309' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <Calendar size={13} />
+                        Date et heure annoncées :
+                      </div>
+
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b', marginTop: '4px' }}>
+                        {scheduledDateObj ? scheduledDateObj.toLocaleDateString('fr-FR', {
+                          weekday: 'long',
+                          day: 'numeric',
+                          month: 'long',
+                          year: 'numeric'
+                        }) : 'Disponible'}
+                        {' à '}
+                        <span style={{ color: isUpcoming ? '#b45309' : '#4338ca', fontWeight: '800' }}>
+                          {scheduledDateObj ? scheduledDateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '14:00'}
+                        </span>
+                      </div>
+
+                      {/* Si À venir : Compte à rebours temps réel */}
+                      {isUpcoming && (
+                        <div style={{
+                          marginTop: '8px',
+                          paddingTop: '8px',
+                          borderTop: '1px dashed #fde68a',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          fontSize: '12px',
+                          color: '#b45309'
+                        }}>
+                          <span>Ouverture du tirage dans :</span>
+                          <span style={{ fontWeight: '800', fontFamily: 'monospace', fontSize: '13px' }}>
+                            {getCountdownString(pub.scheduledAt)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Jauge des Exemplaires Restants */}
+                    <div style={{ marginBottom: '20px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', marginBottom: '6px' }}>
+                        <span style={{ color: '#64748b', fontWeight: '600' }}>Exemplaires certifiés :</span>
+                        <span style={{ fontWeight: '800', color: isExhausted ? '#ef4444' : '#0f172a' }}>
+                          {pub.places_restantes} <span style={{ color: '#64748b', fontWeight: 'normal' }}>/ {pub.maxPlaces || 500}</span>
+                        </span>
+                      </div>
+                      <div style={{ width: '100%', height: '7px', backgroundColor: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{
+                          width: `${Math.max(0, Math.min(100, (pub.places_restantes / (pub.maxPlaces || 500)) * 100))}%`,
+                          height: '100%',
+                          backgroundColor: isExhausted ? '#ef4444' : (pub.places_restantes < 50 ? '#f59e0b' : '#22c55e'),
+                          transition: 'width 0.4s ease'
+                        }} />
+                      </div>
+                    </div>
+
+                    {/* ======================================================== */}
+                    {/* BOUTON DE TÉLÉCHARGEMENT DYNAMIQUE                       */}
+                    {/* - Inactif si la date/heure n'est pas encore arrivée      */}
+                    {/* - Actif si la date/heure est passée et quota > 0        */}
+                    {/* ======================================================== */}
+                    {isUpcoming ? (
+                      <div>
+                        <button
+                          disabled={true}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            backgroundColor: '#f1f5f9',
+                            color: '#94a3b8',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            cursor: 'not-allowed'
+                          }}
+                        >
+                          <Lock size={16} /> Téléchargement inactif (Ouverture à {scheduledDateObj?.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })})
+                        </button>
+                        <p style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', marginTop: '6px' }}>
+                          Le lien s'activera automatiquement à l'heure précise.
+                        </p>
+                      </div>
+                    ) : isOpen ? (
+                      <div>
+                        <button
+                          onClick={() => onGoDownload(pub.linkId)}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            backgroundColor: '#16a34a',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '700',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            boxShadow: '0 4px 12px rgba(22, 163, 74, 0.3)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                        >
+                          <Download size={17} /> Obtenir mon Exemplaire ({pub.places_restantes} restants)
+                        </button>
+                        <p style={{ fontSize: '11px', color: '#16a34a', textAlign: 'center', marginTop: '6px', fontWeight: '500' }}>
+                          ✓ Tirage ouvert • Téléchargement immédiat
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <button
+                          disabled={true}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            backgroundColor: '#f8fafc',
+                            color: '#94a3b8',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            cursor: 'not-allowed'
+                          }}
+                        >
+                          <AlertCircle size={16} /> Tirage Épuisé (500 ex. distribués)
+                        </button>
+                        <p style={{ fontSize: '11px', color: '#94a3b8', textAlign: 'center', marginTop: '6px' }}>
+                          Ce tirage a atteint sa limite maximale.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </section>
 
-      {/* 3. GRILLE DES PILIERS ARCHITECTURAUX */}
-      <section style={{ maxWidth: '1150px', margin: '0 auto 80px', padding: '0 24px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '48px' }}>
-          <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.5px' }}>
-            Une Architecture Robuste aux Contraintes Extrêmes
+      {/* 3. SECTION ÉDITORIALE & VIE DE LA REVUE */}
+      <section style={{ backgroundColor: '#ffffff', borderTop: '1px solid #e2e8f0', padding: '60px 24px' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
+          <div style={{ display: 'inline-flex', padding: '8px', borderRadius: '50%', backgroundColor: '#eef2ff', color: '#4338ca', marginBottom: '14px' }}>
+            <BookOpen size={24} />
+          </div>
+          <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a', marginBottom: '12px' }}>
+            Comment Participer à la Revue Étudiante ?
           </h2>
-          <p style={{ fontSize: '15px', color: '#64748b', marginTop: '8px' }}>
-            Chaque fonctionnalité répond rigoureusement aux spécifications du sujet d'évaluation.
+          <p style={{ fontSize: '15px', color: '#64748b', lineHeight: '1.6', maxWidth: '700px', margin: '0 auto 28px' }}>
+            Tous les étudiants de l'université peuvent proposer des articles, des tribunes libres ou des dossiers scientifiques.
+            L'administrateur de l'association valide les candidatures et habilite les comptes rédacteurs pour l'espace collaboratif.
           </p>
-        </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
-          {/* Carte 1 */}
-          <div style={{ padding: '24px', borderRadius: '10px', backgroundColor: '#faf5ff', border: '1px solid #e9d5ff' }}>
-            <div style={{ width: '42px', height: '42px', borderRadius: '8px', backgroundColor: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-              <Zap size={22} />
-            </div>
-            <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
-              Contrainte C1 : Exactement 500 Exemplaires
-            </h3>
-            <p style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.6' }}>
-              Le Gatekeeper arbitre les 15 000 clics du pic en &lt; 15 ms via DynamoDB. Un jeton à usage unique
-              est attribué et brûlé au téléchargement, rendant impossible tout partage de lien frauduleux.
-            </p>
-          </div>
-
-          {/* Carte 2 */}
-          <div style={{ padding: '24px', borderRadius: '10px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe' }}>
-            <div style={{ width: '42px', height: '42px', borderRadius: '8px', backgroundColor: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-              <Users size={22} />
-            </div>
-            <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
-              Contrainte C2 : Zéro Perte (300 Rédacteurs)
-            </h3>
-            <p style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.6' }}>
-              Moteur mathématique CRDT Yjs garantissant la convergence déterministe de tous les participants sans verrou
-              ni conflit. Chaque frappe est archivée dans un journal immuable DynamoDB pour prévenir toute coupure.
-            </p>
-          </div>
-
-          {/* Carte 3 */}
-          <div style={{ padding: '24px', borderRadius: '10px', backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0' }}>
-            <div style={{ width: '42px', height: '42px', borderRadius: '8px', backgroundColor: '#16a34a', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-              <Clock size={22} />
-            </div>
-            <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
-              Contrainte C4 : 10 000 Caractères & Anti-Abus
-            </h3>
-            <p style={{ fontSize: '13px', color: '#4b5563', lineHeight: '1.6' }}>
-              Garde-fou automatique bloquant la saisie dès 10 000 caractères atteints dans la journée. Les personnes
-              s'acharnant au-delà de ces limites sont automatiquement bloquées pour 15 minutes.
-            </p>
-          </div>
+          {!user && (
+            <button
+              onClick={onOpenAuth}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#4338ca',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer'
+              }}
+            >
+              Vous êtes rédacteur ? Identifiez-vous ici
+            </button>
+          )}
         </div>
       </section>
     </div>

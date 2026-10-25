@@ -112,7 +112,13 @@ export default function App() {
         {currentView === 'home' && (
           <HomePage
             user={user}
-            onGoDownload={() => setCurrentView('download')}
+            onGoDownload={(targetLinkId) => {
+              if (targetLinkId) {
+                setDownloadLinkId(targetLinkId);
+              }
+              setCurrentView('download');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
             onOpenAuth={() => setShowAuthModal(true)}
             onGoEditor={() => handleViewChange('editor')}
             onGoAdmin={() => handleViewChange('admin')}

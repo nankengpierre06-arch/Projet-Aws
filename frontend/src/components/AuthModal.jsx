@@ -206,3 +206,4 @@ export default function AuthModal({ onClose, onLoginSuccess }) {
     </div>
   );
 }
+

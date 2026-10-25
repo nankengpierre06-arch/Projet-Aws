@@ -179,3 +179,4 @@ export default function Navbar({ user, currentView, onViewChange, onOpenAuth, on
     </header>
   );
 }
+

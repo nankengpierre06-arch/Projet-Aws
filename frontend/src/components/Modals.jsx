@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Share2, Download, History, RotateCcw, Check, Copy } from 'lucide-react';
+import { X, Share2, Download, History, RotateCcw, Check, Copy, Calendar, Clock } from 'lucide-react';
 
 export function ShareModal({ docId, onClose }) {
   const [email, setEmail] = useState('');
@@ -63,6 +63,10 @@ export function ShareModal({ docId, onClose }) {
 }
 
 export function CreateLinkModal({ docId, userEmail, onClose, onLinkCreated }) {
+  const [title, setTitle] = useState(`Revue Étudiante — Document ${docId}`);
+  const [description, setDescription] = useState('Édition numérique officielle préparée par la rédaction étudiante.');
+  const [isImmediate, setIsImmediate] = useState(true);
+  const [scheduledDateTime, setScheduledDateTime] = useState('');
   const [maxPlaces, setMaxPlaces] = useState(500);
   const [createdLink, setCreatedLink] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -71,12 +75,20 @@ export function CreateLinkModal({ docId, userEmail, onClose, onLinkCreated }) {
   const handleCreate = async (e) => {
     e.preventDefault();
     setLoading(true);
+
+    const scheduledAt = isImmediate || !scheduledDateTime 
+      ? new Date().toISOString() 
+      : new Date(scheduledDateTime).toISOString();
+
     try {
       const res = await fetch('/api/links', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           docId,
+          title,
+          description,
+          scheduledAt,
           maxPlaces: parseInt(maxPlaces, 10),
           creatorEmail: userEmail
         })
@@ -85,7 +97,7 @@ export function CreateLinkModal({ docId, userEmail, onClose, onLinkCreated }) {
       setCreatedLink(data);
       if (onLinkCreated) onLinkCreated(data);
     } catch {
-      alert('Erreur création de lien');
+      alert('Erreur lors de la programmation de la parution');
     } finally {
       setLoading(false);
     }
@@ -104,7 +116,7 @@ export function CreateLinkModal({ docId, userEmail, onClose, onLinkCreated }) {
         <div style={headerStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Download size={18} color="var(--primary)" />
-            <h3 style={{ fontSize: '15px', fontWeight: 'bold' }}>Créer un Lien de Téléchargement Public</h3>
+            <h3 style={{ fontSize: '15px', fontWeight: 'bold' }}>Publier une Parution en Production</h3>
           </div>
           <button onClick={onClose} style={closeBtnStyle}><X size={18} /></button>
         </div>
@@ -112,10 +124,72 @@ export function CreateLinkModal({ docId, userEmail, onClose, onLinkCreated }) {
           {!createdLink ? (
             <form onSubmit={handleCreate}>
               <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '14px' }}>
-                Ce lien public permettra aux visiteurs de télécharger la version du document en PDF. Le téléchargement sera clôturé dès le quota atteint.
+                Programmez une nouvelle parution officielle sur le kiosque. Elle sera visible sur la page d'accueil avec son statut et son compte à rebours.
               </p>
+
               <label style={{ fontSize: '12px', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
-                Quota maximum de téléchargements autorisés (Contrainte C1) :
+                Titre de la parution :
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                style={{ width: '100%', marginBottom: '12px' }}
+                required
+              />
+
+              <label style={{ fontSize: '12px', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
+                Sommaire / Description :
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
+                style={{ width: '100%', marginBottom: '12px', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                required
+              />
+
+              <div style={{ marginBottom: '14px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <label style={{ fontSize: '12px', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px', color: '#1e293b' }}>
+                  <Calendar size={14} color="#4338ca" />
+                  Date et heure d'ouverture annoncée :
+                </label>
+
+                <div style={{ display: 'flex', gap: '14px', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="scheduleType"
+                      checked={isImmediate}
+                      onChange={() => setIsImmediate(true)}
+                    />
+                    Immédiate (Tirage ouvert dès maintenant)
+                  </label>
+
+                  <label style={{ fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}>
+                    <input
+                      type="radio"
+                      name="scheduleType"
+                      checked={!isImmediate}
+                      onChange={() => setIsImmediate(false)}
+                    />
+                    Programmée (Date et heure précises)
+                  </label>
+                </div>
+
+                {!isImmediate && (
+                  <input
+                    type="datetime-local"
+                    value={scheduledDateTime}
+                    onChange={(e) => setScheduledDateTime(e.target.value)}
+                    style={{ width: '100%', padding: '6px 8px', fontSize: '13px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                    required={!isImmediate}
+                  />
+                )}
+              </div>
+
+              <label style={{ fontSize: '12px', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
+                Quota d'exemplaires certifiés (Tirage limité) :
               </label>
               <input
                 type="number"
@@ -126,21 +200,22 @@ export function CreateLinkModal({ docId, userEmail, onClose, onLinkCreated }) {
                 style={{ width: '100%', marginBottom: '16px' }}
                 required
               />
+
               <button
                 type="submit"
                 disabled={loading}
-                style={{ width: '100%', padding: '10px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none' }}
+                style={{ width: '100%', padding: '10px', backgroundColor: '#4338ca', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: '700', cursor: 'pointer' }}
               >
-                {loading ? 'Génération...' : `Générer le lien public (${maxPlaces} places)`}
+                {loading ? 'Publication en cours...' : `Publier la Parution (${maxPlaces} places)`}
               </button>
             </form>
           ) : (
             <div>
               <div style={{ padding: '12px', backgroundColor: 'var(--success-bg)', color: 'var(--success)', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', marginBottom: '12px' }}>
-                Lien généré avec succès ! Quota : {createdLink.maxPlaces} exemplaires.
+                Parution enregistrée avec succès ! Quota : {createdLink.maxPlaces} exemplaires.
               </div>
               <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>
-                Vous serez averti par e-mail dès l'attribution du 500ème exemplaire (Contrainte C6).
+                La parution est désormais accessible sur le kiosque de la page d'accueil.
               </p>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
                 <input
@@ -151,14 +226,14 @@ export function CreateLinkModal({ docId, userEmail, onClose, onLinkCreated }) {
                 />
                 <button
                   onClick={copyUrl}
-                  style={{ padding: '8px 12px', backgroundColor: '#e2e8f0', border: 'none', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
+                  style={{ padding: '8px 12px', backgroundColor: '#e2e8f0', border: 'none', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', cursor: 'pointer' }}
                 >
                   {copied ? <Check size={14} color="green" /> : <Copy size={14} />} {copied ? 'Copié' : 'Copier'}
                 </button>
               </div>
               <button
                 onClick={onClose}
-                style={{ width: '100%', padding: '10px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1' }}
+                style={{ width: '100%', padding: '10px', backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '6px', cursor: 'pointer' }}
               >
                 Fermer
               </button>

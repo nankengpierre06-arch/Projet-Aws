@@ -10,6 +10,8 @@ const documentsRouter = require('./routes/documents');
 const linksRouter = require('./routes/links');
 const adminRouter = require('./routes/admin');
 
+const storage = require('../aws/storage-adapter');
+
 const app = express();
 
 app.use(cors());
@@ -30,6 +32,12 @@ app.get('/api/health', (req, res) => {
     service: 'Revue API & Gatekeeper',
     timestamp: new Date().toISOString()
   });
+});
+
+// Endpoint public pour les documents et parutions en production
+app.get('/api/publications', async (req, res) => {
+  const publications = await storage.listPublicPublications();
+  res.json(publications);
 });
 
 // Montage des routes

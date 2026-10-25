@@ -25,10 +25,46 @@ const config = require('../config');
 const fs = require('fs');
 const path = require('path');
 
+function createSamplePdf(title) {
+  const content = `%PDF-1.4
+1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj
+2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj
+3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >> endobj
+4 0 obj << /Length 130 >> stream
+BT
+/F1 16 Tf
+50 780 Td
+(${title}) Tj
+/F1 10 Tf
+0 -25 Td
+(Revue Universitaire Officielle - Exemplaire Certifie) Tj
+ET
+endstream
+endobj
+5 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000227 00000 n 
+0000000409 00000 n 
+trailer << /Size 6 /Root 1 0 R >>
+startxref
+480
+%%EOF`;
+  return Buffer.from(content, 'utf-8');
+}
+
 // Mémoire locale pour les tests ou développement hors-ligne
 const localStore = {
   items: new Map(), // Clé: `${PK}#${SK}`
-  s3Objects: new Map(), // Clé: S3 Key -> Buffer
+  s3Objects: new Map([
+    ['pdfs/doc-revue-42/v1.pdf', createSamplePdf('Revue Universitaire 42')],
+    ['pdfs/doc-revue-43/v1.pdf', createSamplePdf('Revue Universitaire 43')],
+    ['pdfs/doc-revue-41/v1.pdf', createSamplePdf('Revue Universitaire 41')]
+  ]),
   sqsQueue: [],
   snsSent: [],
   blockedUsers: new Map(), // email -> { reason, blockedUntil }
@@ -38,6 +74,109 @@ const localStore = {
     ['bob@etudiant.fr', { email: 'bob@etudiant.fr', name: 'Bob Dupont', role: 'WRITER', createdAt: new Date().toISOString() }]
   ])
 };
+
+// Initialisation des documents et parutions en production
+(() => {
+  const now = Date.now();
+  const pastOneHour = new Date(now - 3600000).toISOString();
+  
+  // Demain à 14h00 pour la parution annoncée
+  const tomorrow14h = new Date(now + 86400000);
+  tomorrow14h.setHours(14, 0, 0, 0);
+  const futureScheduled = tomorrow14h.toISOString();
+
+  const pastThreeDays = new Date(now - 3 * 86400000).toISOString();
+
+  // 1. Revue 42 (En cours - Date/Heure passée - Tirage Ouvert)
+  localStore.items.set('DOC#doc-revue-42#META', {
+    PK: 'DOC#doc-revue-42',
+    SK: 'META',
+    docId: 'doc-revue-42',
+    title: 'Revue Étudiante n°42 — Innovations & Vie Universitaire',
+    ownerEmail: 'alice@etudiant.fr',
+    authorizedWriters: ['alice@etudiant.fr', 'admin@etudiant.fr'],
+    currentVersion: 1,
+    createdAt: pastOneHour,
+    updatedAt: pastOneHour
+  });
+
+  localStore.items.set('LINK#revue-edition-42#META', {
+    PK: 'LINK#revue-edition-42',
+    SK: 'META',
+    linkId: 'revue-edition-42',
+    docId: 'doc-revue-42',
+    title: 'Revue Étudiante n°42 — Innovations & Vie Universitaire',
+    description: 'Grand dossier sur les projets étudiants, les innovations technologiques et la vie associative du campus universitaire.',
+    scheduledAt: pastOneHour, // Annoncée et ouverte il y a 1h
+    versionSeq: 1,
+    maxPlaces: 500,
+    places_restantes: 468,
+    creatorEmail: 'alice@etudiant.fr',
+    pdfStatus: 'READY',
+    pdfS3Key: 'pdfs/doc-revue-42/v1.pdf',
+    createdAt: pastOneHour
+  });
+
+  // 2. Revue 43 (À paraître - Annoncée à une date et heure précises - Inactive jusqu\'à l\'heure)
+  localStore.items.set('DOC#doc-revue-43#META', {
+    PK: 'DOC#doc-revue-43',
+    SK: 'META',
+    docId: 'doc-revue-43',
+    title: 'Revue Étudiante n°43 — Édition Spéciale : Intelligence Artificielle & Avenir',
+    ownerEmail: 'admin@etudiant.fr',
+    authorizedWriters: ['admin@etudiant.fr', 'bob@etudiant.fr'],
+    currentVersion: 1,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+
+  localStore.items.set('LINK#revue-edition-43#META', {
+    PK: 'LINK#revue-edition-43',
+    SK: 'META',
+    linkId: 'revue-edition-43',
+    docId: 'doc-revue-43',
+    title: 'Revue Étudiante n°43 — Édition Spéciale : Intelligence Artificielle & Avenir',
+    description: 'Dossier exclusif rédigé par plus de 300 étudiants. Tribunes de prospective, éthique algorithmique et interviews d\'enseignants-chercheurs.',
+    scheduledAt: futureScheduled, // Date et heure précises futures
+    versionSeq: 1,
+    maxPlaces: 500,
+    places_restantes: 500,
+    creatorEmail: 'admin@etudiant.fr',
+    pdfStatus: 'READY',
+    pdfS3Key: 'pdfs/doc-revue-43/v1.pdf',
+    createdAt: new Date().toISOString()
+  });
+
+  // 3. Revue 41 (Archive épuisée - 500 exemplaires déjà distribués)
+  localStore.items.set('DOC#doc-revue-41#META', {
+    PK: 'DOC#doc-revue-41',
+    SK: 'META',
+    docId: 'doc-revue-41',
+    title: 'Revue Étudiante n°41 — Bilan Annuel & Projets d\'Automne',
+    ownerEmail: 'bob@etudiant.fr',
+    authorizedWriters: ['bob@etudiant.fr'],
+    currentVersion: 1,
+    createdAt: pastThreeDays,
+    updatedAt: pastThreeDays
+  });
+
+  localStore.items.set('LINK#revue-edition-41#META', {
+    PK: 'LINK#revue-edition-41',
+    SK: 'META',
+    linkId: 'revue-edition-41',
+    docId: 'doc-revue-41',
+    title: 'Revue Étudiante n°41 — Bilan Annuel & Projets d\'Automne',
+    description: 'Rétrospective complète des initiatives étudiantes, création artistique et tribunes libres de la rentrée.',
+    scheduledAt: pastThreeDays,
+    versionSeq: 1,
+    maxPlaces: 500,
+    places_restantes: 0, // Épuisé
+    creatorEmail: 'bob@etudiant.fr',
+    pdfStatus: 'READY',
+    pdfS3Key: 'pdfs/doc-revue-41/v1.pdf',
+    createdAt: pastThreeDays
+  });
+})();
 
 if (!fs.existsSync(config.paths.tempStorage)) {
   fs.mkdirSync(config.paths.tempStorage, { recursive: true });
@@ -365,12 +504,15 @@ class StorageAdapter {
   // 4. GATEKEEPER TÉLÉCHARGEMENT (Contrainte C1 - Exactement 500)
   // ===========================================================================
 
-  async createDownloadLink(linkId, docId, versionSeq, maxPlaces, creatorEmail) {
+  async createDownloadLink(linkId, docId, versionSeq, maxPlaces, creatorEmail, options = {}) {
     const item = {
       PK: `LINK#${linkId}`,
       SK: 'META',
       linkId,
       docId,
+      title: options.title || `Revue Universitaire — Document ${docId}`,
+      description: options.description || 'Édition numérique officielle de la revue étudiante.',
+      scheduledAt: options.scheduledAt || new Date().toISOString(),
       versionSeq: parseInt(versionSeq, 10),
       maxPlaces: parseInt(maxPlaces, 10),
       places_restantes: parseInt(maxPlaces, 10),
@@ -397,6 +539,50 @@ class StorageAdapter {
     return localStore.items.get(`LINK#${linkId}#META`) || null;
   }
 
+  async listPublicPublications() {
+    const publications = [];
+    const now = Date.now();
+
+    for (const [key, val] of localStore.items.entries()) {
+      if (key.startsWith('LINK#') && key.endsWith('#META')) {
+        const scheduledTime = val.scheduledAt ? new Date(val.scheduledAt).getTime() : 0;
+        const isUpcoming = scheduledTime > now;
+        const isExhausted = val.places_restantes <= 0;
+        const isOpen = !isUpcoming && !isExhausted;
+
+        publications.push({
+          linkId: val.linkId,
+          docId: val.docId,
+          title: val.title || `Revue Universitaire — Édition ${val.linkId}`,
+          description: val.description || 'Édition numérique officielle de la revue étudiante.',
+          versionSeq: val.versionSeq,
+          maxPlaces: val.maxPlaces || 500,
+          places_restantes: val.places_restantes,
+          scheduledAt: val.scheduledAt || val.createdAt,
+          isUpcoming,
+          isOpen,
+          isExhausted,
+          status: isUpcoming ? 'UPCOMING' : (isExhausted ? 'EXHAUSTED' : 'OPEN'),
+          pdfStatus: val.pdfStatus,
+          createdAt: val.createdAt,
+          creatorEmail: val.creatorEmail
+        });
+      }
+    }
+
+    // Tri : En cours d'abord, puis À venir (ordre chronologique d'ouverture), puis Épuisées
+    publications.sort((a, b) => {
+      if (a.isOpen && !b.isOpen) return -1;
+      if (!a.isOpen && b.isOpen) return 1;
+      if (a.isUpcoming && b.isUpcoming) return new Date(a.scheduledAt) - new Date(b.scheduledAt);
+      if (a.isUpcoming && !b.isUpcoming) return -1;
+      if (!a.isUpcoming && b.isUpcoming) return 1;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+
+    return publications;
+  }
+
   async decrementLinkQuota(linkId) {
     const storeKey = `LINK#${linkId}#META`;
     const link = localStore.items.get(storeKey);
@@ -404,6 +590,16 @@ class StorageAdapter {
     if (!link) {
       return { success: false, reason: 'NOT_FOUND' };
     }
+
+    // Contrôle de date et heure annoncées : si pas encore ouvert, rejet immédiat
+    if (link.scheduledAt && new Date(link.scheduledAt).getTime() > Date.now()) {
+      return {
+        success: false,
+        reason: 'NOT_YET_OPEN',
+        scheduledAt: link.scheduledAt
+      };
+    }
+
     if (link.places_restantes <= 0) {
       return { success: false, reason: 'EXHAUSTED', remaining: 0 };
     }

@@ -1,13 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { Download, CheckCircle, Clock, AlertOctagon, FileText, ArrowRight } from 'lucide-react';
+import { Download, CheckCircle, Clock, AlertOctagon, FileText, Lock, Calendar, ArrowLeft } from 'lucide-react';
 
 export default function DownloadView({ linkId }) {
-  // États : 'IDLE' | 'CHECKING' | 'WAITING_PDF' | 'READY' | 'EXHAUSTED' | 'ERROR'
+  // États : 'IDLE' | 'CHECKING' | 'WAITING_PDF' | 'READY' | 'EXHAUSTED' | 'NOT_YET_OPEN' | 'ERROR'
   const [state, setState] = useState('IDLE');
   const [tokenData, setTokenData] = useState(null);
+  const [parutionInfo, setParutionInfo] = useState(null);
   const [errorInfo, setErrorInfo] = useState('');
   const [remainingPlaces, setRemainingPlaces] = useState(null);
   const [latency, setLatency] = useState(null);
+  const [now, setNow] = useState(new Date());
+
+  // Horloge locale
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Chargement des informations du lien au montage
+  useEffect(() => {
+    fetch(`/api/download/status/${linkId}`)
+      .then(res => res.json())
+      .then(data => {
+        setParutionInfo(data);
+        if (data.isUpcoming) {
+          setState('NOT_YET_OPEN');
+        } else if (data.isExhausted) {
+          setState('EXHAUSTED');
+          setErrorInfo('Le quota de 500 exemplaires a été atteint.');
+        }
+      })
+      .catch(() => {});
+  }, [linkId]);
 
   const startDownloadFlow = async () => {
     setState('CHECKING');
@@ -21,6 +45,12 @@ export default function DownloadView({ linkId }) {
       if (res.status === 410) {
         setState('EXHAUSTED');
         setErrorInfo(data.message || 'Le quota de 500 exemplaires a été atteint.');
+        return;
+      }
+
+      if (res.status === 403 || data.error === 'PARUTION_NOT_YET_OPEN') {
+        setState('NOT_YET_OPEN');
+        setErrorInfo(data.message || 'Cette parution n\'est pas encore ouverte au téléchargement.');
         return;
       }
 
@@ -70,46 +100,138 @@ export default function DownloadView({ linkId }) {
     window.location.href = `/api/download/file?token=${tokenData.token}`;
   };
 
+  // Compte à rebours
+  const getCountdown = () => {
+    if (!parutionInfo || !parutionInfo.scheduledAt) return '';
+    const diff = new Date(parutionInfo.scheduledAt).getTime() - now.getTime();
+    if (diff <= 0) return 'Ouverture imminente';
+    const h = Math.floor(diff / (1000 * 60 * 60));
+    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const s = Math.floor((diff % (1000 * 60)) / 1000);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(h)}h ${pad(m)}m ${pad(s)}s`;
+  };
+
+  const scheduledDateObj = parutionInfo?.scheduledAt ? new Date(parutionInfo.scheduledAt) : null;
+
   return (
     <div style={{
-      minHeight: '100vh',
+      minHeight: '80vh',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: '#f1f5f9',
-      padding: '20px'
+      backgroundColor: '#f8fafc',
+      padding: '40px 20px'
     }}>
       <div style={{
-        maxWidth: '520px',
+        maxWidth: '540px',
         width: '100%',
         backgroundColor: '#ffffff',
         borderRadius: '12px',
         boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
         padding: '36px',
-        textAlign: 'center'
+        textAlign: 'center',
+        border: '1px solid #e2e8f0'
       }}>
+        {/* En-tête */}
         <div style={{
           width: '60px',
           height: '60px',
           borderRadius: '50%',
-          backgroundColor: 'var(--primary-light)',
-          color: 'var(--primary)',
+          backgroundColor: state === 'NOT_YET_OPEN' ? '#fef3c7' : 'var(--primary-light)',
+          color: state === 'NOT_YET_OPEN' ? '#b45309' : 'var(--primary)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           margin: '0 auto 16px'
         }}>
-          <FileText size={32} />
+          {state === 'NOT_YET_OPEN' ? <Lock size={30} /> : <FileText size={30} />}
         </div>
 
-        <h1 style={{ fontSize: '22px', fontWeight: 'bold', marginBottom: '8px', color: '#0f172a' }}>
-          Revue Numérique Annuelle
+        <h1 style={{ fontSize: '22px', fontWeight: 'bold', marginBottom: '6px', color: '#0f172a' }}>
+          {parutionInfo?.title || 'Revue Numérique Annuelle'}
         </h1>
         <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '24px' }}>
-          Édition officielle certifiée par les étudiants • Tirage strictement limité à <b>500 exemplaires</b>
+          Tirage limité à <b>500 exemplaires certifiés</b> • Rédaction universitaire
         </p>
 
-        {/* ÉTAT 1 : IDLE */}
+        {/* ÉTAT : NOT_YET_OPEN (Parution Annoncée mais Date/Heure future) */}
+        {state === 'NOT_YET_OPEN' && (
+          <div>
+            <div style={{
+              padding: '18px',
+              backgroundColor: '#fffbeb',
+              border: '1px solid #fde68a',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              textAlign: 'left'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#b45309', fontWeight: 'bold', fontSize: '13px', marginBottom: '8px' }}>
+                <Calendar size={16} />
+                Parution programmée
+              </div>
+              <p style={{ fontSize: '13px', color: '#78350f', lineHeight: '1.5' }}>
+                Cette parution a été annoncée pour une ouverture officielle le :
+              </p>
+              <div style={{ fontSize: '15px', fontWeight: '800', color: '#92400e', marginTop: '6px' }}>
+                {scheduledDateObj ? scheduledDateObj.toLocaleDateString('fr-FR', {
+                  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+                }) : ''}
+                {' à '}
+                <span style={{ textDecoration: 'underline' }}>
+                  {scheduledDateObj ? scheduledDateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                </span>
+              </div>
+
+              <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px dashed #fde68a', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#b45309' }}>
+                <span>Temps restant :</span>
+                <span style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '15px' }}>
+                  {getCountdown()}
+                </span>
+              </div>
+            </div>
+
+            <button
+              disabled={true}
+              style={{
+                width: '100%',
+                padding: '14px',
+                backgroundColor: '#f1f5f9',
+                color: '#94a3b8',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                cursor: 'not-allowed',
+                marginBottom: '14px'
+              }}
+            >
+              <Lock size={16} /> Téléchargement Inactif (Non encore ouvert)
+            </button>
+
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); window.location.hash = ''; window.location.reload(); }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '13px',
+                color: '#4338ca',
+                textDecoration: 'none',
+                fontWeight: '600'
+              }}
+            >
+              <ArrowLeft size={14} /> Retour au Kiosque d'Accueil
+            </a>
+          </div>
+        )}
+
+        {/* ÉTAT 1 : IDLE (Prêt pour téléchargement) */}
         {state === 'IDLE' && (
           <div>
             <div style={{
@@ -121,7 +243,7 @@ export default function DownloadView({ linkId }) {
               fontSize: '13px',
               color: '#334155'
             }}>
-              <b>Règle de parution :</b> Les exemplaires sont délivrés au fil de l'eau. Seules les 500 premières personnes obtiennent leur fichier PDF certifié.
+              <b>Tirage ouvert :</b> Cliquez sur le bouton ci-dessous pour réserver votre place parmi les 500 exemplaires certifiés.
             </div>
 
             <button
@@ -129,15 +251,18 @@ export default function DownloadView({ linkId }) {
               style={{
                 width: '100%',
                 padding: '14px',
-                backgroundColor: 'var(--primary)',
+                backgroundColor: '#16a34a',
                 color: '#ffffff',
                 border: 'none',
+                borderRadius: '8px',
                 fontSize: '15px',
-                fontWeight: '600',
+                fontWeight: '700',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px'
+                gap: '8px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(22, 163, 74, 0.3)'
               }}
             >
               <Download size={18} /> Télécharger mon Exemplaire
@@ -148,9 +273,9 @@ export default function DownloadView({ linkId }) {
         {/* ÉTAT 2 : CHECKING */}
         {state === 'CHECKING' && (
           <div style={{ padding: '30px 0' }}>
-            <Clock size={36} color="var(--primary)" style={{ animation: 'spin 1.5s linear infinite' }} />
+            <Clock size={36} color="var(--primary)" style={{ animation: 'spin 1.5s linear infinite', margin: '0 auto' }} />
             <h3 style={{ marginTop: '16px', fontSize: '16px', fontWeight: '600' }}>Vérification de votre place...</h3>
-            <p style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>Arbitrage atomique en cours sur la base NoSQL...</p>
+            <p style={{ fontSize: '12px', color: '#64748b', marginTop: '6px' }}>Arbitrage de votre téléchargement...</p>
           </div>
         )}
 
@@ -170,12 +295,12 @@ export default function DownloadView({ linkId }) {
               justifyContent: 'center',
               gap: '6px'
             }}>
-              <CheckCircle size={18} /> Place #{500 - (remainingPlaces || 0)} réservée avec succès !
+              <CheckCircle size={18} /> Place #{500 - (remainingPlaces || 0)} accordée avec succès !
             </div>
-            <Clock size={30} color="var(--warning)" style={{ animation: 'pulse 1s ease-in-out infinite' }} />
-            <h4 style={{ marginTop: '12px', fontSize: '15px' }}>Génération du PDF par Typst...</h4>
+            <Clock size={30} color="var(--warning)" style={{ animation: 'pulse 1s ease-in-out infinite', margin: '0 auto' }} />
+            <h4 style={{ marginTop: '12px', fontSize: '15px' }}>Génération du PDF...</h4>
             <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-              Le compilateur assemble le texte le plus récent à l'instant T1. Veuillez patienter quelques secondes.
+              Le compilateur assemble le fichier certifié. Veuillez patienter un instant.
             </p>
           </div>
         )}
@@ -210,19 +335,21 @@ export default function DownloadView({ linkId }) {
                 backgroundColor: 'var(--success)',
                 color: '#ffffff',
                 border: 'none',
+                borderRadius: '8px',
                 fontSize: '15px',
                 fontWeight: '600',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '8px'
+                gap: '8px',
+                cursor: 'pointer'
               }}
             >
               <Download size={18} /> Récupérer le Fichier PDF
             </button>
 
             <p style={{ fontSize: '11px', color: '#94a3b8', marginTop: '12px' }}>
-              Ce lien est strictement personnel et à usage unique (Contrainte C1).
+              Ce lien est strictement personnel et à usage unique.
             </p>
           </div>
         )}
@@ -244,9 +371,9 @@ export default function DownloadView({ linkId }) {
               <AlertOctagon size={28} />
             </div>
 
-            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--danger)' }}>Quota de 500 Exemplaires Épuisé</h3>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--danger)' }}>Tirage de 500 Exemplaires Épuisé</h3>
             <p style={{ fontSize: '13px', color: '#64748b', marginTop: '8px', lineHeight: '1.4' }}>
-              {errorInfo}
+              {errorInfo || 'Les 500 exemplaires certifiés de cette parution ont tous été attribués.'}
             </p>
 
             <div style={{
@@ -258,7 +385,7 @@ export default function DownloadView({ linkId }) {
               fontSize: '12px',
               color: '#64748b'
             }}>
-              L'application a clôturé la distribution conformément à la contrainte C1 du projet. L'auteur a été notifié par e-mail automatique.
+              La distribution pour ce numéro est désormais close.
             </div>
           </div>
         )}
@@ -266,7 +393,7 @@ export default function DownloadView({ linkId }) {
         {/* ÉTAT 6 : ERROR */}
         {state === 'ERROR' && (
           <div style={{ padding: '20px 0' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--danger)' }}>Erreur</h3>
+            <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--danger)' }}>Information</h3>
             <p style={{ fontSize: '13px', color: '#64748b', marginTop: '8px' }}>{errorInfo}</p>
             <button
               onClick={() => setState('IDLE')}
@@ -275,8 +402,10 @@ export default function DownloadView({ linkId }) {
                 padding: '8px 16px',
                 backgroundColor: '#e2e8f0',
                 border: 'none',
+                borderRadius: '6px',
                 color: '#334155',
-                fontSize: '13px'
+                fontSize: '13px',
+                cursor: 'pointer'
               }}
             >
               Réessayer
@@ -287,4 +416,3 @@ export default function DownloadView({ linkId }) {
     </div>
   );
 }
-

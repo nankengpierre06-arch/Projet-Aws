@@ -82,11 +82,22 @@ router.get('/status/:linkId', async (req, res) => {
     return res.status(404).json({ error: 'NOT_FOUND' });
   }
 
+  const now = Date.now();
+  const scheduledTime = link.scheduledAt ? new Date(link.scheduledAt).getTime() : 0;
+  const isUpcoming = scheduledTime > now;
+  const isExhausted = link.places_restantes <= 0;
+
   return res.json({
     linkId,
+    title: link.title,
+    description: link.description,
+    scheduledAt: link.scheduledAt,
+    isUpcoming,
+    isOpen: !isUpcoming && !isExhausted,
+    isExhausted,
     places_restantes: link.places_restantes,
-    pdfStatus: link.pdfStatus || 'PENDING',
-    isExhausted: link.places_restantes <= 0
+    maxPlaces: link.maxPlaces,
+    pdfStatus: link.pdfStatus || 'PENDING'
   });
 });
 
@@ -107,6 +118,14 @@ router.get('/:linkId', async (req, res) => {
         return res.status(404).json({
           error: 'LINK_NOT_FOUND',
           message: 'Lien de téléchargement inexistant ou révoqué.'
+        });
+      }
+
+      if (decResult.reason === 'NOT_YET_OPEN') {
+        return res.status(403).json({
+          error: 'PARUTION_NOT_YET_OPEN',
+          message: `La parution n'est pas encore ouverte. Ouverture prévue le ${new Date(decResult.scheduledAt).toLocaleString('fr-FR')}.`,
+          scheduledAt: decResult.scheduledAt
         });
       }
 
