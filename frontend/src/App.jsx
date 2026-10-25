@@ -24,7 +24,7 @@ export default function App() {
 
   // 3. Document et Liens
   const [docId, setDocId] = useState('revue-principale');
-  const [downloadLinkId, setDownloadLinkId] = useState('revue-principale-dl');
+  const [downloadLinkId, setDownloadLinkId] = useState('revue-edition-42');
 
   // 4. Modales
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -125,10 +125,10 @@ export default function App() {
           />
         )}
 
-        {/* 2. Espace Téléchargement Public Visiteur (Accessible librement) */}
+        {/* 2. Espace Téléchargement Public Visiteur (Accessible par clic sur une parution) */}
         {currentView === 'download' && (
           <div style={{ flex: 1 }}>
-            <DownloadView linkId={downloadLinkId || 'revue-e64bbbbe'} />
+            <DownloadView linkId={downloadLinkId || 'revue-edition-42'} />
           </div>
         )}
 

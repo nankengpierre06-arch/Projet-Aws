@@ -62,23 +62,6 @@ export default function Navbar({ user, currentView, onViewChange, onOpenAuth, on
           <Home size={15} /> Accueil
         </button>
 
-        <button
-          onClick={() => onViewChange('download')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '8px 14px',
-            backgroundColor: currentView === 'download' ? 'var(--primary-light)' : 'transparent',
-            color: currentView === 'download' ? 'var(--primary)' : 'var(--text)',
-            border: 'none',
-            fontSize: '13px',
-            fontWeight: currentView === 'download' ? '600' : '500'
-          }}
-        >
-          <Download size={15} /> Téléchargement Public (500 ex.)
-        </button>
-
         {user && (
           <button
             onClick={() => onViewChange('editor')}
