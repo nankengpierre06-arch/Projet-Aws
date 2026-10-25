@@ -22,7 +22,8 @@ export default function WriterDashboardView({
   onOpenVersions,
   onMarkNotifsRead,
   onApproveCollab,
-  onRejectCollab
+  onRejectCollab,
+  onSelectTab
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterArchive, setFilterArchive] = useState('ALL'); // 'ALL' | 'ACTIVE' | 'ARCHIVED'
@@ -131,6 +132,8 @@ export default function WriterDashboardView({
     return (doc.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
            (doc.ownerEmail || '').toLowerCase().includes(searchTerm.toLowerCase());
   });
+
+  const pendingInvitesCount = notifications.filter(n => n.type === 'INVITE' && (n.status === 'PENDING' || !n.status)).length || pendingDocs.length;
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
@@ -546,7 +549,7 @@ export default function WriterDashboardView({
       )}
 
       {/* ===================================================================== */}
-      {/* 2. VUE : DOCUMENTS PARTAGÉS AVEC MOI (COLLABORATIONS)                 */}
+      {/* 2. VUE : DOCUMENTS PARTAGÉS AVEC MOI (COLLABORATIONS APPROUVÉES)      */}
       {/* ===================================================================== */}
       {activeTab === 'SHARED' && (
         <div style={{ maxWidth: '1100px', width: '100%', margin: '0 auto' }}>
@@ -570,145 +573,58 @@ export default function WriterDashboardView({
               Documents Partagés avec Moi
             </h1>
             <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>
-              Articles et revues créés par d'autres membres où vos droits de co-rédaction sont actifs ou en attente d'approbation.
+              Articles et revues créés par d'autres membres pour lesquels vous avez approuvé la collaboration.
             </p>
           </div>
 
-          {/* 1. SECTION : INVITATIONS EN ATTENTE D'APPROBATION */}
-          {filteredPendingDocs.length > 0 && (
-            <div style={{ marginBottom: '36px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-                <h2 style={{ fontSize: '17px', fontWeight: '800', color: '#0f172a' }}>
-                  Invitations en attente de votre réponse
-                </h2>
-                <span style={{
-                  fontSize: '11.5px',
-                  fontWeight: '700',
-                  backgroundColor: '#fef3c7',
-                  color: '#b45309',
-                  border: '1px solid #fde68a',
-                  padding: '2px 8px',
-                  borderRadius: '10px'
-                }}>
-                  {filteredPendingDocs.length} en attente
+          {/* Bannière d'information si des invitations sont en attente de réponse */}
+          {pendingInvitesCount > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '14px 18px',
+              backgroundColor: '#fffbeb',
+              border: '1px solid #fde68a',
+              borderRadius: '10px',
+              marginBottom: '24px',
+              fontSize: '13px',
+              color: '#92400e',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Bell size={18} color="#d97706" />
+                <span>
+                  Vous avez <b>{pendingInvitesCount} invitation(s) de collaboration en attente</b>. Conformément à la gouvernance, vous pouvez les approuver ou les rejeter exclusivement dans la page <b>Notifications</b>.
                 </span>
               </div>
-
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(330px, 1fr))',
-                gap: '20px'
-              }}>
-                {filteredPendingDocs.map(doc => (
-                  <div
-                    key={doc.docId}
-                    style={{
-                      backgroundColor: '#ffffff',
-                      borderRadius: '12px',
-                      border: '2px solid #ddd6fe',
-                      padding: '22px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      boxShadow: '0 4px 14px rgba(124, 58, 237, 0.08)'
-                    }}
-                  >
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                        <span style={{
-                          fontSize: '11px',
-                          fontWeight: '700',
-                          color: '#7c3aed',
-                          backgroundColor: '#f5f3ff',
-                          border: '1px solid #ddd6fe',
-                          padding: '3px 8px',
-                          borderRadius: '6px'
-                        }}>
-                          Invité par {doc.ownerEmail}
-                        </span>
-
-                        <span style={{
-                          fontSize: '11px',
-                          fontWeight: '700',
-                          color: '#b45309',
-                          backgroundColor: '#fef3c7',
-                          padding: '2px 7px',
-                          borderRadius: '4px'
-                        }}>
-                          À confirmer
-                        </span>
-                      </div>
-
-                      <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '8px', lineHeight: '1.4' }}>
-                        {doc.title}
-                      </h3>
-
-                      <p style={{ fontSize: '12.5px', color: '#64748b', marginBottom: '16px', lineHeight: '1.4' }}>
-                        Vous avez reçu une invitation de collaboration. Souhaitez-vous rejoindre la rédaction de cette revue ?
-                      </p>
-                    </div>
-
-                    <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '16px', display: 'flex', gap: '8px' }}>
-                      <button
-                        onClick={() => onApproveCollab && onApproveCollab(doc.docId)}
-                        style={{
-                          flex: 1,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          padding: '8px 12px',
-                          backgroundColor: '#16a34a',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '8px',
-                          fontSize: '12.5px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)',
-                          transition: 'background-color 0.15s ease'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#15803d'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#16a34a'}
-                      >
-                        <Check size={14} /> Approuver
-                      </button>
-
-                      <button
-                        onClick={() => onRejectCollab && onRejectCollab(doc.docId)}
-                        style={{
-                          flex: 1,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '6px',
-                          padding: '8px 12px',
-                          backgroundColor: '#fff1f2',
-                          border: '1px solid #fecdd3',
-                          color: '#e11d48',
-                          borderRadius: '8px',
-                          fontSize: '12.5px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.15s ease'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ffe4e6'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff1f2'}
-                      >
-                        <X size={14} /> Rejeter
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <button
+                onClick={() => onSelectTab && onSelectTab('NOTIFS')}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  backgroundColor: '#f59e0b',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer'
+                }}
+              >
+                Gérer dans Notifications <ArrowRight size={14} />
+              </button>
             </div>
           )}
 
-          {/* 2. SECTION : COLLABORATIONS ACTIVES */}
+          {/* SECTION UNIQUE : COLLABORATIONS APPROUVÉES */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <h2 style={{ fontSize: '17px', fontWeight: '800', color: '#0f172a' }}>
-                Collaborations Actives
+                Collaborations Approuvées
               </h2>
               <span style={{
                 fontSize: '11.5px',
@@ -732,12 +648,35 @@ export default function WriterDashboardView({
                 textAlign: 'center'
               }}>
                 <Users size={40} color="#94a3b8" style={{ margin: '0 auto 12px auto' }} />
-                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#334155' }}>Aucune collaboration active</h3>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#334155' }}>
+                  Aucune collaboration approuvée
+                </h3>
                 <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
-                  {filteredPendingDocs.length > 0 
-                    ? "Approuvez une invitation ci-dessus pour accéder immédiatement à l'éditeur partagé." 
-                    : "Vous n'avez pas encore de document partagé actif."}
+                  {pendingInvitesCount > 0 
+                    ? "Rendez-vous dans la page Notifications pour approuver vos invitations en attente." 
+                    : "Vous n'avez pas encore de document partagé approuvé."}
                 </p>
+                {pendingInvitesCount > 0 && (
+                  <button
+                    onClick={() => onSelectTab && onSelectTab('NOTIFS')}
+                    style={{
+                      marginTop: '16px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 16px',
+                      backgroundColor: 'var(--primary)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontSize: '12.5px',
+                      fontWeight: '600',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Ouvrir les Notifications
+                  </button>
+                )}
               </div>
             ) : (
               <div style={{
@@ -775,12 +714,16 @@ export default function WriterDashboardView({
                         <span style={{
                           fontSize: '11px',
                           fontWeight: '700',
-                          color: '#6b21a8',
-                          backgroundColor: '#f3e8ff',
+                          color: '#16a34a',
+                          backgroundColor: '#dcfce7',
+                          border: '1px solid #bbf7d0',
                           padding: '2px 7px',
-                          borderRadius: '4px'
+                          borderRadius: '4px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px'
                         }}>
-                          v{doc.currentVersion || 1}
+                          <Check size={11} /> Approuvé
                         </span>
                       </div>
 
@@ -820,11 +763,14 @@ export default function WriterDashboardView({
                         title="Consulter l'historique des versions"
                         style={{
                           padding: '8px 12px',
-                          backgroundColor: '#ffffff',
-                          border: '1px solid #cbd5e1',
+                          backgroundColor: '#f8fafc',
+                          border: '1px solid #e2e8f0',
                           borderRadius: '8px',
-                          color: '#475569',
-                          cursor: 'pointer'
+                          color: '#64748b',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
                         }}
                       >
                         <History size={15} />
@@ -1332,9 +1278,9 @@ export default function WriterDashboardView({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {notifications.map(n => {
                 const isInvite = n.type === 'INVITE';
-                const isPending = n.status === 'PENDING';
-                const isAccepted = n.status === 'ACCEPTED';
-                const isRejected = n.status === 'REJECTED';
+                const isPending = isInvite && (n.status === 'PENDING' || !n.status);
+                const isAccepted = isInvite && n.status === 'ACCEPTED';
+                const isRejected = isInvite && n.status === 'REJECTED';
 
                 return (
                   <div

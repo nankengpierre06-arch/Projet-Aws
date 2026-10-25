@@ -144,7 +144,7 @@ export default function App() {
     fetch(`/api/documents/notifications/${encodeURIComponent(user.email)}`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data) && data.length > 0) setNotifications(data);
+        if (Array.isArray(data)) setNotifications(data);
       })
       .catch(() => {});
 
@@ -316,10 +316,22 @@ export default function App() {
   const handleApproveCollab = async (targetDocId) => {
     // Mise à jour optimiste immédiate
     const targetPending = pendingDocs.find(d => d.docId === targetDocId);
+    const relatedNotif = notifications.find(n => n.docId === targetDocId && n.type === 'INVITE');
+
+    setPendingDocs(prev => prev.filter(d => d.docId !== targetDocId));
     if (targetPending) {
-      setPendingDocs(prev => prev.filter(d => d.docId !== targetDocId));
-      setSharedDocs(prev => [targetPending, ...prev]);
+      setSharedDocs(prev => [targetPending, ...prev.filter(d => d.docId !== targetDocId)]);
+    } else if (relatedNotif) {
+      setSharedDocs(prev => [{
+        docId: targetDocId,
+        title: relatedNotif.docTitle || relatedNotif.title || `Document ${targetDocId}`,
+        ownerEmail: relatedNotif.inviterEmail || 'collaborateur@etudiant.fr',
+        currentVersion: 1,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }, ...prev.filter(d => d.docId !== targetDocId)]);
     }
+
     setNotifications(prev => prev.map(n => 
       n.docId === targetDocId && n.type === 'INVITE'
         ? { ...n, status: 'ACCEPTED', read: true }
@@ -426,7 +438,7 @@ export default function App() {
               activeDocId={docId}
               activeDocTitle={ownedDocs.find(d => d.docId === docId)?.title || sharedDocs.find(d => d.docId === docId)?.title || docId}
               ownedDocsCount={ownedDocs.length}
-              sharedDocsCount={sharedDocs.length + pendingDocs.length}
+              sharedDocsCount={sharedDocs.length}
               unreadNotifsCount={notifications.filter(n => !n.read).length}
               linksCount={publications.length}
               onSelectTab={(tab) => setWriterTab(tab)}
@@ -474,6 +486,7 @@ export default function App() {
                 onMarkNotifsRead={handleMarkNotifsRead}
                 onApproveCollab={handleApproveCollab}
                 onRejectCollab={handleRejectCollab}
+                onSelectTab={(tab) => setWriterTab(tab)}
               />
             )}
           </div>

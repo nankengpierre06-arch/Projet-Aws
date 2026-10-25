@@ -20,7 +20,7 @@ export function ShareModal({ docId, userEmail, onClose, onCollaboratorAdded }) {
       if (!res.ok) {
         setMsg(data.message || 'Erreur lors de l\'invitation.');
       } else {
-        setMsg(`✓ Invitation transmise à ${email} ! Il pourra approuver ou rejeter la collaboration.`);
+        setMsg(`✓ Invitation transmise à ${email} ! Il pourra approuver ou rejeter la collaboration dans son Centre de Notifications.`);
         setEmail('');
         if (onCollaboratorAdded) onCollaboratorAdded(email);
       }
@@ -43,7 +43,7 @@ export function ShareModal({ docId, userEmail, onClose, onCollaboratorAdded }) {
         </div>
         <form onSubmit={handleShare} style={{ padding: '20px' }}>
           <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>
-            Indiquez l'adresse e-mail déclarative du rédacteur à inviter. Une demande d'approbation lui sera adressée dans son espace personnel.
+            Indiquez l'adresse e-mail déclarative du rédacteur à inviter. Une demande d'approbation lui sera adressée dans son Centre de Notifications.
           </p>
           <input
             type="email"
