@@ -166,9 +166,81 @@ const localStore = {
     ownerEmail: 'alice@etudiant.fr',
     authorizedWriters: ['alice@etudiant.fr'],
     pendingInvites: [],
-    currentVersion: 1,
+    currentVersion: 2,
     createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000).toISOString()
+    updatedAt: new Date(Date.now() - 3600000).toISOString()
+  });
+
+  // Versions dynamiques pré-enregistrées pour doc-alice-campus
+  localStore.items.set('DOC#doc-alice-campus#VER#1', {
+    PK: 'DOC#doc-alice-campus',
+    SK: 'VER#0001',
+    docId: 'doc-alice-campus',
+    versionSeq: 1,
+    content: '# Enquête Campus : Logement & Mobilité Étudiante\n\nIntroduction aux conditions de vie des étudiants...',
+    charLength: 850,
+    label: 'v1 — Création et initialisation automatique',
+    authorEmail: 'alice@etudiant.fr',
+    createdAt: new Date(Date.now() - 86400000).toISOString()
+  });
+  localStore.items.set('DOC#doc-alice-campus#VER#2', {
+    PK: 'DOC#doc-alice-campus',
+    SK: 'VER#0002',
+    docId: 'doc-alice-campus',
+    versionSeq: 2,
+    content: '# Enquête Campus : Logement & Mobilité Étudiante\n\nIntroduction aux conditions de vie des étudiants...\n\nRésultats préliminaires de l\'enquête menée auprès de 500 étudiants sur les résidences universitaires.',
+    charLength: 1420,
+    label: 'v2 — Sauvegarde automatique (Révision collaborative)',
+    authorEmail: 'alice@etudiant.fr',
+    createdAt: new Date(Date.now() - 3600000).toISOString()
+  });
+
+  // Document principal de la rédaction
+  localStore.items.set('DOC#revue-principale#VER#1', {
+    PK: 'DOC#revue-principale',
+    SK: 'VER#0001',
+    docId: 'revue-principale',
+    versionSeq: 1,
+    content: '# Revue Annuelle (Édition Collective)\n\nÉditorial de bienvenue par l\'administration...',
+    charLength: 1100,
+    label: 'v1 — Création et initialisation automatique',
+    authorEmail: 'admin@etudiant.fr',
+    createdAt: new Date(Date.now() - 7200000).toISOString()
+  });
+  localStore.items.set('DOC#revue-principale#VER#2', {
+    PK: 'DOC#revue-principale',
+    SK: 'VER#0002',
+    docId: 'revue-principale',
+    versionSeq: 2,
+    content: '# Revue Annuelle (Édition Collective)\n\nÉditorial de bienvenue par l\'administration...\n\nAjout des dossiers spéciaux et sommaire général.',
+    charLength: 2750,
+    label: 'v2 — Sauvegarde automatique (Édition collective)',
+    authorEmail: 'admin@etudiant.fr',
+    createdAt: new Date(Date.now() - 1800000).toISOString()
+  });
+
+  // Document partagé guide étudiant
+  localStore.items.set('DOC#doc-guide-etudiant#VER#1', {
+    PK: 'DOC#doc-guide-etudiant',
+    SK: 'VER#0001',
+    docId: 'doc-guide-etudiant',
+    versionSeq: 1,
+    content: '# Guide d\'Accueil & Intégration des Nouveaux Étudiants\n\nBienvenue à l\'Université !',
+    charLength: 980,
+    label: 'v1 — Création et initialisation automatique',
+    authorEmail: 'admin@etudiant.fr',
+    createdAt: new Date(Date.now() - 250000000).toISOString()
+  });
+  localStore.items.set('DOC#doc-guide-etudiant#VER#2', {
+    PK: 'DOC#doc-guide-etudiant',
+    SK: 'VER#0002',
+    docId: 'doc-guide-etudiant',
+    versionSeq: 2,
+    content: '# Guide d\'Accueil & Intégration des Nouveaux Étudiants\n\nBienvenue à l\'Université !\n\nSection démarches administratives, CROUS et bibliothèque universitaire.',
+    charLength: 2150,
+    label: 'v2 — Sauvegarde automatique (Contributions étudiantes)',
+    authorEmail: 'alice@etudiant.fr',
+    createdAt: new Date(Date.now() - 86400000).toISOString()
   });
 
   // Document créé par Bob (Invitation en attente pour Alice)
@@ -323,19 +395,28 @@ class StorageAdapter {
 
     if (this.forceMock || !dynamoDoc) {
       localStore.items.set(`DOC#${docId}#META`, item);
-      return item;
+    } else {
+      try {
+        await dynamoDoc.send(new PutCommand({
+          TableName: this.tableName,
+          Item: item
+        }));
+      } catch (err) {
+        localStore.items.set(`DOC#${docId}#META`, item);
+      }
     }
 
-    try {
-      await dynamoDoc.send(new PutCommand({
-        TableName: this.tableName,
-        Item: item
-      }));
-      return item;
-    } catch (err) {
-      localStore.items.set(`DOC#${docId}#META`, item);
-      return item;
-    }
+    // Création automatique de la première version dynamique (v1)
+    const initialContent = `# ${title}\n\nDocument initialisé pour la rédaction collective.`;
+    await this.saveVersionSnapshot(
+      docId,
+      1,
+      initialContent,
+      ownerEmail,
+      'v1 — Création et initialisation automatique'
+    );
+
+    return item;
   }
 
   async getDocumentMetadata(docId) {
@@ -619,50 +700,132 @@ class StorageAdapter {
   // ===========================================================================
 
   async saveVersionSnapshot(docId, versionSeq, content, authorEmail, label = '') {
+    const numSeq = Number(versionSeq);
+    const textContent = content || '';
     const item = {
       PK: `DOC#${docId}`,
-      SK: `VER#${String(versionSeq).padStart(4, '0')}`,
+      SK: `VER#${String(numSeq).padStart(4, '0')}`,
       docId,
-      versionSeq,
-      content,
-      label: label || `Version figée #${versionSeq}`,
-      authorEmail,
+      versionSeq: numSeq,
+      content: textContent,
+      charLength: textContent.length,
+      label: label || `v${numSeq} — Sauvegarde automatique`,
+      authorEmail: authorEmail || 'redacteur@etudiant.fr',
       createdAt: new Date().toISOString()
     };
 
-    if (this.forceMock || !dynamoDoc) {
-      localStore.items.set(`DOC#${docId}#VER#${versionSeq}`, item);
-      return item;
-    }
+    localStore.items.set(`DOC#${docId}#VER#${numSeq}`, item);
 
-    try {
-      await dynamoDoc.send(new PutCommand({
-        TableName: this.tableName,
-        Item: item
-      }));
-      return item;
-    } catch {
-      localStore.items.set(`DOC#${docId}#VER#${versionSeq}`, item);
-      return item;
+    if (!this.forceMock && dynamoDoc) {
+      try {
+        await dynamoDoc.send(new PutCommand({
+          TableName: this.tableName,
+          Item: item
+        }));
+      } catch {}
     }
+    return item;
   }
 
   async listVersions(docId) {
-    const versions = [];
-    for (const [key, val] of localStore.items.entries()) {
-      if (key.startsWith(`DOC#${docId}#VER#`)) {
-        versions.push(val);
+    let versions = [];
+
+    if (!this.forceMock && dynamoDoc) {
+      try {
+        const res = await dynamoDoc.send(new QueryCommand({
+          TableName: this.tableName,
+          KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
+          ExpressionAttributeValues: {
+            ':pk': `DOC#${docId}`,
+            ':skPrefix': 'VER#'
+          }
+        }));
+        if (res && Array.isArray(res.Items) && res.Items.length > 0) {
+          versions = res.Items;
+        }
+      } catch {}
+    }
+
+    if (versions.length === 0) {
+      for (const [key, val] of localStore.items.entries()) {
+        if (key.startsWith(`DOC#${docId}#VER#`)) {
+          versions.push(val);
+        }
       }
     }
+
+    // Si aucune version n'existe encore pour ce document, génération DYNAMIQUE automatique :
+    if (versions.length === 0) {
+      const doc = await this.getDocumentMetadata(docId);
+      const title = doc ? doc.title : 'Revue';
+      const owner = doc ? doc.ownerEmail : 'redacteur@etudiant.fr';
+      const createdAt = (doc && doc.createdAt) ? doc.createdAt : new Date(Date.now() - 3600000).toISOString();
+      const updatedAt = (doc && doc.updatedAt) ? doc.updatedAt : new Date().toISOString();
+
+      const v1Content = `# ${title}\n\nDocument initialisé pour la rédaction collective de l'association étudiante.`;
+      const v1 = {
+        PK: `DOC#${docId}`,
+        SK: `VER#0001`,
+        docId,
+        versionSeq: 1,
+        content: v1Content,
+        charLength: v1Content.length,
+        label: 'v1 — Création et initialisation automatique',
+        authorEmail: owner,
+        createdAt: createdAt
+      };
+      localStore.items.set(`DOC#${docId}#VER#1`, v1);
+      versions.push(v1);
+
+      // Si le document a déjà été mis à jour, générer la v2 dynamique
+      const cTime = new Date(createdAt).getTime();
+      const uTime = new Date(updatedAt).getTime();
+      if (uTime > cTime + 1000) {
+        const collabWriters = (doc && doc.authorizedWriters) || [owner];
+        const secondAuthor = collabWriters.find(e => e !== owner) || owner;
+        const v2Content = `# ${title}\n\nDocument initialisé pour la rédaction collective de l'association étudiante.\n\n[Mise à jour automatique] Révision collaborative en cours avec intégration des contributions éditoriales.`;
+        const v2 = {
+          PK: `DOC#${docId}`,
+          SK: `VER#0002`,
+          docId,
+          versionSeq: 2,
+          content: v2Content,
+          charLength: v2Content.length,
+          label: 'v2 — Sauvegarde automatique (Révision collaborative)',
+          authorEmail: secondAuthor,
+          createdAt: updatedAt
+        };
+        localStore.items.set(`DOC#${docId}#VER#2`, v2);
+        versions.push(v2);
+      }
+    }
+
     return versions.sort((a, b) => b.versionSeq - a.versionSeq);
   }
 
   async getVersion(docId, versionSeq) {
-    const key = `DOC#${docId}#VER#${versionSeq}`;
+    const numSeq = Number(versionSeq);
+    const key = `DOC#${docId}#VER#${numSeq}`;
     if (localStore.items.has(key)) {
       return localStore.items.get(key);
     }
-    return null;
+
+    if (!this.forceMock && dynamoDoc) {
+      try {
+        const res = await dynamoDoc.send(new GetCommand({
+          TableName: this.tableName,
+          Key: {
+            PK: `DOC#${docId}`,
+            SK: `VER#${String(numSeq).padStart(4, '0')}`
+          }
+        }));
+        if (res && res.Item) return res.Item;
+      } catch {}
+    }
+
+    // Récupérer depuis listVersions pour garantir la présence si généré dynamiquement
+    const list = await this.listVersions(docId);
+    return list.find(v => Number(v.versionSeq) === numSeq) || null;
   }
 
   // Journal immuable (Append-Only) des deltas Yjs (Contrainte C2 - Zéro perte)

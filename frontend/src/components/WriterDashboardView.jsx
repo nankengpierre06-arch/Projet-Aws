@@ -32,8 +32,9 @@ export default function WriterDashboardView({
   const [creating, setCreating] = useState(false);
 
   // État spécifique pour la vue VERSIONS
+  const allAccessibleDocs = [...ownedDocs, ...sharedDocs];
   const [selectedVersionDocId, setSelectedVersionDocId] = useState(() => {
-    return ownedDocs.length > 0 ? ownedDocs[0].docId : '';
+    return allAccessibleDocs.length > 0 ? allAccessibleDocs[0].docId : '';
   });
   const [docVersions, setDocVersions] = useState([]);
   const [loadingVersions, setLoadingVersions] = useState(false);
@@ -42,12 +43,12 @@ export default function WriterDashboardView({
   // État spécifique pour la vue LIENS DE PARUTION
   const [copiedLinkId, setCopiedLinkId] = useState(null);
 
-  // Mettre à jour le docId sélectionné pour les versions si ownedDocs change
+  // Mettre à jour le docId sélectionné pour les versions si la liste change
   useEffect(() => {
-    if (!selectedVersionDocId && ownedDocs.length > 0) {
-      setSelectedVersionDocId(ownedDocs[0].docId);
+    if (!selectedVersionDocId && allAccessibleDocs.length > 0) {
+      setSelectedVersionDocId(allAccessibleDocs[0].docId);
     }
-  }, [ownedDocs, selectedVersionDocId]);
+  }, [allAccessibleDocs.length, selectedVersionDocId]);
 
   // Charger les versions du document sélectionné
   const loadDocVersions = (targetDocId) => {
@@ -71,26 +72,6 @@ export default function WriterDashboardView({
       loadDocVersions(selectedVersionDocId);
     }
   }, [activeTab, selectedVersionDocId]);
-
-  const handleCreateSnapshot = async () => {
-    if (!selectedVersionDocId) return;
-    const label = window.prompt("Nom / libellé de l'instantané figé T1 :", `Relecture du ${new Date().toLocaleDateString('fr-FR')}`);
-    if (!label) return;
-
-    try {
-      const res = await fetch(`/api/documents/${encodeURIComponent(selectedVersionDocId)}/versions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label, authorEmail: user.email })
-      });
-      const data = await res.json();
-      setVersionFeedback(`✓ Instantané #${data.versionSeq} créé avec succès !`);
-      setTimeout(() => setVersionFeedback(''), 4000);
-      loadDocVersions(selectedVersionDocId);
-    } catch {
-      alert("Erreur lors de la création de l'instantané.");
-    }
-  };
 
   const handleRestoreVersion = async (versionSeq) => {
     const confirmed = window.confirm(`Voulez-vous restaurer le document à la version #${versionSeq} ? Le texte actuel sera remplacé et synchronisé sur tous les postes.`);
@@ -810,39 +791,19 @@ export default function WriterDashboardView({
                   textTransform: 'uppercase',
                   letterSpacing: '0.05em'
                 }}>
-                  Historique & Sauvegardes Figées
+                  Historique Dynamique & Sauvegardes T1
                 </span>
               </div>
               <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.02em' }}>
                 Historique des Versions & Instantanés T1
               </h1>
               <p style={{ fontSize: '14px', color: '#64748b', marginTop: '4px' }}>
-                Gérez les instantanés figés et restaurez les versions des documents dont vous êtes le propriétaire.
+                Sélectionnez un document pour consulter l'ensemble des versions générées dynamiquement et restaurer un état précédent.
               </p>
             </div>
-
-            <button
-              onClick={handleCreateSnapshot}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '9px 18px',
-                backgroundColor: '#0891b2',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(8, 145, 178, 0.25)'
-              }}
-            >
-              <Plus size={16} /> Créer un Instantané T1 Figé
-            </button>
           </div>
 
-          {/* Sélecteur de document propriétaire */}
+          {/* Sélecteur de document */}
           <div style={{
             backgroundColor: '#ffffff',
             padding: '16px 20px',
@@ -861,22 +822,31 @@ export default function WriterDashboardView({
               </span>
               <select
                 value={selectedVersionDocId}
-                onChange={(e) => setSelectedVersionDocId(e.target.value)}
+                onChange={(e) => {
+                  const nextId = e.target.value;
+                  setSelectedVersionDocId(nextId);
+                  loadDocVersions(nextId);
+                }}
                 style={{
-                  padding: '6px 12px',
+                  padding: '8px 14px',
                   fontSize: '13px',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                   border: '1px solid #cbd5e1',
                   backgroundColor: '#ffffff',
                   fontWeight: '600',
-                  color: '#0f172a'
+                  color: '#0f172a',
+                  cursor: 'pointer'
                 }}
               >
-                {ownedDocs.map(d => (
-                  <option key={d.docId} value={d.docId}>
-                    {d.title} (#{d.docId})
-                  </option>
-                ))}
+                {allAccessibleDocs.length === 0 ? (
+                  <option value="">Aucun document disponible</option>
+                ) : (
+                  allAccessibleDocs.map(d => (
+                    <option key={d.docId} value={d.docId}>
+                      {d.title} (#{d.docId}) {d.ownerEmail === user.email ? '— Mon document' : '— Document partagé'}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -919,7 +889,7 @@ export default function WriterDashboardView({
           {/* Liste des versions */}
           {loadingVersions ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-              Chargement des instantanés T1...
+              Chargement des versions dynamiques...
             </div>
           ) : docVersions.length === 0 ? (
             <div style={{
@@ -930,9 +900,9 @@ export default function WriterDashboardView({
               textAlign: 'center'
             }}>
               <History size={36} color="#94a3b8" style={{ margin: '0 auto 10px auto' }} />
-              <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#334155' }}>Aucun instantané figé</h3>
+              <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#334155' }}>Génération automatique des versions</h3>
               <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
-                Cliquez sur « Créer un Instantané T1 Figé » pour capturer l'état actuel de ce document.
+                Les versions de ce document s'enregistrent automatiquement à chaque étape de rédaction.
               </p>
             </div>
           ) : (

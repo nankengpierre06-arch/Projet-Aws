@@ -170,6 +170,30 @@ class CollabServer {
           storage.appendDelta(docId, currentSeq, base64Delta, userEmail).catch(err => {
             console.error(`[Collab C2] Erreur sauvegarde delta #${currentSeq} : ${err.message}`);
           });
+
+          // Création dynamique automatique d'instantanés de versions (Contrainte C3)
+          clearTimeout(docState.autoSnapshotTimer);
+          docState.autoSnapshotTimer = setTimeout(async () => {
+            try {
+              const currentText = docState.ydoc.getText('content').toString();
+              if (currentText.length > 5 && currentText !== docState.lastSnapshotText) {
+                docState.lastSnapshotText = currentText;
+                const existingVersions = await storage.listVersions(docId);
+                const nextSeq = existingVersions.length > 0 ? Math.max(...existingVersions.map(v => Number(v.versionSeq) || 0)) + 1 : 1;
+                const timeStr = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+                await storage.saveVersionSnapshot(
+                  docId,
+                  nextSeq,
+                  currentText,
+                  userEmail,
+                  `v${nextSeq} — Sauvegarde automatique (${timeStr})`
+                );
+                console.log(`[Collab C3] Version dynamique #${nextSeq} créée automatiquement pour le doc ${docId}`);
+              }
+            } catch (snapErr) {
+              console.error(`[Collab C3] Erreur sauvegarde version dynamique : ${snapErr.message}`);
+            }
+          }, 3500);
         } 
         // Tag 1 : Message de présence et curseurs (Awareness)
         else if (messageType === 1) {

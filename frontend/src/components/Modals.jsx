@@ -265,47 +265,31 @@ export function CreateLinkModal({ docId, user, userEmail, onClose, onLinkCreated
 
 export function VersionsModal({ docId, userEmail, onClose }) {
   const [versions, setVersions] = useState([]);
-  const [label, setLabel] = useState('');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('');
 
   const fetchVersions = async () => {
+    setLoading(true);
     try {
       const res = await fetch(`/api/documents/${docId}/versions`);
       const data = await res.json();
       setVersions(data.versions || []);
-    } catch {}
+    } catch {
+      setVersions([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchVersions();
   }, [docId]);
 
-  const handleSnapshot = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await fetch(`/api/documents/${docId}/versions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label, authorEmail: userEmail })
-      });
-      setLabel('');
-      setStatus('Instantané figé créé avec succès !');
-      fetchVersions();
-      setTimeout(() => setStatus(''), 4000);
-    } catch {
-      setStatus('Erreur création snapshot');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleRestore = async (versionSeq) => {
-    if (!window.confirm(`Confirmer la restauration de la version #${versionSeq} ? Le texte actuel sera remplacé.`)) return;
+    if (!window.confirm(`Confirmer la restauration de la version #${versionSeq} ? Le texte actuel sera remplacé et synchronisé sur tous les postes.`)) return;
     try {
       await fetch(`/api/documents/${docId}/restore/${versionSeq}`, { method: 'POST' });
-      setStatus(`Version #${versionSeq} restaurée en direct !`);
+      setStatus(`✓ Version #${versionSeq} restaurée en direct !`);
       setTimeout(() => {
         setStatus('');
         onClose();
@@ -321,42 +305,37 @@ export function VersionsModal({ docId, userEmail, onClose }) {
         <div style={headerStyle}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <History size={18} color="var(--primary)" />
-            <h3 style={{ fontSize: '15px', fontWeight: 'bold' }}>Versions & Instantanés T1 (Contrainte C3)</h3>
+            <h3 style={{ fontSize: '15px', fontWeight: 'bold' }}>Versions & Sauvegardes Dynamiques (Contrainte C3)</h3>
           </div>
           <button onClick={onClose} style={closeBtnStyle}><X size={18} /></button>
         </div>
         <div style={{ padding: '20px' }}>
-          {/* Créer un nouvel instantané */}
-          <form onSubmit={handleSnapshot} style={{ marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid var(--border)' }}>
-            <label style={{ fontSize: '12px', fontWeight: '600', display: 'block', marginBottom: '6px' }}>
-              Créer un nouvel instantané figé (T1) :
-            </label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input
-                type="text"
-                placeholder="Ex: Version finale avant parution"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                style={{ flex: 1, fontSize: '12px' }}
-                required
-              />
-              <button
-                type="submit"
-                disabled={loading}
-                style={{ padding: '8px 14px', backgroundColor: 'var(--primary)', color: '#fff', border: 'none', fontSize: '12px', whiteSpace: 'nowrap' }}
-              >
-                Figer la version
-              </button>
-            </div>
-            {status && <p style={{ fontSize: '12px', color: 'var(--success)', marginTop: '8px' }}>{status}</p>}
-          </form>
+          <div style={{
+            padding: '10px 14px',
+            backgroundColor: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '8px',
+            marginBottom: '16px',
+            fontSize: '12px',
+            color: '#166534',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span>ℹ️</span>
+            <span>Les instantanés et versions sont générés dynamiquement par le système lors de la rédaction. Vous pouvez restaurer n'importe quel état antérieur ci-dessous.</span>
+          </div>
+
+          {status && <p style={{ fontSize: '13px', color: 'var(--success)', marginBottom: '12px', fontWeight: '600' }}>{status}</p>}
 
           {/* Liste des versions */}
-          <h4 style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px' }}>Historique des versions enregistrées :</h4>
-          {versions.length === 0 ? (
-            <p style={{ fontSize: '12px', color: '#64748b' }}>Aucune version figée enregistrée pour ce document.</p>
+          <h4 style={{ fontSize: '13px', fontWeight: 'bold', marginBottom: '10px' }}>Historique des versions disponibles :</h4>
+          {loading ? (
+            <p style={{ fontSize: '12px', color: '#64748b' }}>Chargement des versions...</p>
+          ) : versions.length === 0 ? (
+            <p style={{ fontSize: '12px', color: '#64748b' }}>Génération dynamique des versions en cours pour ce document...</p>
           ) : (
-            <div style={{ maxHeight: '220px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {versions.map((v) => (
                 <div
                   key={v.versionSeq}
@@ -375,7 +354,7 @@ export function VersionsModal({ docId, userEmail, onClose }) {
                       Version #{v.versionSeq} : {v.label}
                     </span>
                     <p style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                      Créée le {new Date(v.createdAt).toLocaleDateString('fr-FR')} par {v.authorEmail}
+                      Créée le {new Date(v.createdAt).toLocaleDateString('fr-FR')} {new Date(v.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} • {v.authorEmail}
                     </p>
                   </div>
                   <button
@@ -387,11 +366,13 @@ export function VersionsModal({ docId, userEmail, onClose }) {
                       padding: '6px 10px',
                       backgroundColor: '#ffffff',
                       border: '1px solid var(--border)',
+                      borderRadius: '4px',
                       fontSize: '11px',
-                      color: 'var(--primary)'
+                      color: 'var(--primary)',
+                      cursor: 'pointer'
                     }}
                   >
-                    <RotateCcw size={12} /> Restaurer (EF07)
+                    <RotateCcw size={12} /> Restaurer
                   </button>
                 </div>
               ))}
