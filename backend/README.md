@@ -19,3 +19,4 @@ Ce module implémente l'ensemble des services serveur et de persistance conform�
 3. **Worker Asynchrone de Compilation PDF** :
    - Consommateur SQS en long-polling découplé (Contrainte C5).
    - Génération Typst avec métadonnées d'exemplaire certifié.
+

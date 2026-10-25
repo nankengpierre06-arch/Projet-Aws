@@ -24,3 +24,4 @@ Ce dossier contient l'ensemble des définitions et outils de déploiement de l'i
    - `cdk/` : Stack CDK v2 complète (`lib/journal-stack.js`).
    - `setup_aws.sh` : Script automatisé avec configuration IAM et lancement de l'instance EC2 t3.micro.
    - `user-data.sh` : Script d'initialisation automatique au démarrage de l'instance.
+

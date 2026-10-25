@@ -21,3 +21,4 @@ Application Single Page (SPA) développée avec React 18, Vite et Lucide Icons.
 4. **Portail de Parution Publique (Contrainte C1)** :
    - Téléchargement direct du PDF certifié dès le clic sur le lien.
    - Prise en compte immédiate des 500 exemplaires certifiés avec arbitrage atomique.
+
